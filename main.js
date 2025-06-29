@@ -4316,15 +4316,30 @@ var NoOpTTSService = class {
 };
 
 // src/core/algorithms/SpacedRepetitionAlgorithm.ts
+var QUALITY_SCORES = {
+  ["hard" /* Hard */]: 1,
+  ["good" /* Good */]: 2,
+  ["easy" /* Easy */]: 3
+};
 var DEFAULT_SRS_SETTINGS = {
+  // SM-2 Algorithm Settings
+  initialEFactor: 2.5,
+  // SM-2 표준 초기 E-Factor
+  minimumEFactor: 1.3,
+  // SM-2 표준 최소 E-Factor
+  maximumInterval: 36525,
+  // ~100년
+  // Load Balancing Settings
+  loadBalance: true,
+  maxFuzzingDays: 3,
+  // Legacy compatibility (will be converted)
   baseEase: 250,
+  // 2.5 * 100
   easyBonus: 1.3,
   hardPenalty: 0.5,
   minimumEase: 130,
-  maximumInterval: 36525,
-  initialInterval: 1,
-  loadBalance: true,
-  maxFuzzingDays: 3
+  // 1.3 * 100
+  initialInterval: 1
 };
 var SpacedRepetitionAlgorithm = class {
   constructor(settings = DEFAULT_SRS_SETTINGS) {
@@ -4333,52 +4348,58 @@ var SpacedRepetitionAlgorithm = class {
   }
   /**
    * Calculate the next review schedule based on user response
-   * Based on SM-2-OSR algorithm from obsidian-spaced-repetition
+   * Implements the SM-2 algorithm according to learning_algorithm.md specification
    */
   schedule(response, currentSchedule) {
     const now = /* @__PURE__ */ new Date();
+    const q = QUALITY_SCORES[response];
     if (!currentSchedule) {
       currentSchedule = {
         dueDate: now.toISOString(),
         interval: 0,
-        ease: this.settings.baseEase,
+        ease: Math.round(this.settings.initialEFactor * 100),
+        // E-Factor를 100으로 곱해서 저장
         reviewCount: 0,
         lapseCount: 0,
-        delayedDays: 0
+        delayedDays: 0,
+        repetition: 0
       };
     }
-    const dueDate = new Date(currentSchedule.dueDate);
-    const delayedDays = Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1e3 * 60 * 60 * 24)));
-    let newInterval = currentSchedule.interval;
-    let newEase = currentSchedule.ease;
-    switch (response) {
-      case "easy" /* Easy */:
-        newEase = Math.min(500, newEase + 20);
-        newInterval = Math.max(1, (currentSchedule.interval + delayedDays) * newEase * this.settings.easyBonus / 100);
-        break;
-      case "good" /* Good */:
-        newInterval = Math.max(1, (currentSchedule.interval + delayedDays / 2) * newEase / 100);
-        break;
-      case "hard" /* Hard */:
-        newEase = Math.max(this.settings.minimumEase, newEase - 20);
-        newInterval = Math.max(1, (currentSchedule.interval + delayedDays / 4) * this.settings.hardPenalty);
-        break;
+    let currentEFactor = currentSchedule.ease / 100;
+    let newRepetition = currentSchedule.repetition;
+    const delta = 0.1 - (3 - q) * (0.08 + (3 - q) * 0.02);
+    let newEFactor = currentEFactor + delta;
+    newEFactor = Math.max(this.settings.minimumEFactor, newEFactor);
+    if (q >= 2) {
+      newRepetition = currentSchedule.repetition + 1;
+    } else {
+      newRepetition = 0;
     }
-    if (currentSchedule.reviewCount === 0) {
-      newInterval = this.settings.initialInterval;
-    } else if (currentSchedule.reviewCount === 1 && response !== "hard" /* Hard */) {
-      newInterval = 6;
+    let newInterval;
+    if (q < 2) {
+      newInterval = 1;
+    } else {
+      if (newRepetition === 1) {
+        newInterval = 1;
+      } else if (newRepetition === 2) {
+        newInterval = 6;
+      } else {
+        newInterval = Math.round(currentSchedule.interval * newEFactor);
+      }
     }
     newInterval = Math.min(newInterval, this.settings.maximumInterval);
+    newInterval = Math.max(1, newInterval);
     if (this.settings.loadBalance) {
       newInterval = this.applyLoadBalancing(newInterval);
     }
     const newDueDate = new Date(now.getTime() + newInterval * 24 * 60 * 60 * 1e3);
     this.updateDueDateHistogram(newDueDate.toDateString());
     return {
-      interval: Math.round(newInterval),
-      ease: Math.round(newEase),
-      dueDate: newDueDate.toISOString()
+      interval: newInterval,
+      ease: Math.round(newEFactor * 100),
+      // E-Factor를 100으로 곱해서 반환
+      dueDate: newDueDate.toISOString(),
+      repetition: newRepetition
     };
   }
   /**
@@ -4572,7 +4593,8 @@ var SpacedRepetitionService = class {
         ease: reviewResult.ease,
         reviewCount: (((_b = card.scheduleInfo) == null ? void 0 : _b.reviewCount) || 0) + 1,
         lapseCount: (((_c = card.scheduleInfo) == null ? void 0 : _c.lapseCount) || 0) + (response === "hard" /* Hard */ ? 1 : 0),
-        delayedDays: ((_d = card.scheduleInfo) == null ? void 0 : _d.delayedDays) || 0
+        delayedDays: ((_d = card.scheduleInfo) == null ? void 0 : _d.delayedDays) || 0,
+        repetition: reviewResult.repetition
       }
     };
     this.currentSession.cardsReviewed++;
@@ -4664,7 +4686,8 @@ var SpacedRepetitionService = class {
         ease: reviewResult.ease,
         reviewCount: (((_a = card.scheduleInfo) == null ? void 0 : _a.reviewCount) || 0) + 1,
         lapseCount: (((_b = card.scheduleInfo) == null ? void 0 : _b.lapseCount) || 0) + (difficulty === "hard" /* Hard */ ? 1 : 0),
-        delayedDays: 0
+        delayedDays: 0,
+        repetition: reviewResult.repetition
       }
     };
   }
@@ -4717,6 +4740,7 @@ var SpacedRepetitionService = class {
   }
   /**
    * Get the next review intervals for each difficulty level
+   * Shows the exact SM-2 algorithm results with E-Factor information
    */
   getNextReviewIntervals(card) {
     const hardResult = this.algorithm.schedule("hard" /* Hard */, card.scheduleInfo);
@@ -4725,15 +4749,22 @@ var SpacedRepetitionService = class {
     return {
       hard: {
         interval: hardResult.interval,
-        displayText: this.formatInterval(hardResult.interval)
+        displayText: this.formatInterval(hardResult.interval),
+        eFactor: hardResult.ease / 100,
+        // Convert back to E-Factor
+        repetition: hardResult.repetition
       },
       good: {
         interval: goodResult.interval,
-        displayText: this.formatInterval(goodResult.interval)
+        displayText: this.formatInterval(goodResult.interval),
+        eFactor: goodResult.ease / 100,
+        repetition: goodResult.repetition
       },
       easy: {
         interval: easyResult.interval,
-        displayText: this.formatInterval(easyResult.interval)
+        displayText: this.formatInterval(easyResult.interval),
+        eFactor: easyResult.ease / 100,
+        repetition: easyResult.repetition
       }
     };
   }
@@ -4754,6 +4785,99 @@ var SpacedRepetitionService = class {
       const years = Math.round(days / 365 * 10) / 10;
       return `${years} year${years > 1 ? "s" : ""}`;
     }
+  }
+  /**
+   * Get detailed SM-2 algorithm statistics
+   */
+  getSM2Statistics(allCards) {
+    const stats = {
+      overview: { totalCards: 0, newCards: 0, learningCards: 0, matureCards: 0 },
+      repetitions: { rep0: 0, rep1: 0, rep2: 0, rep3Plus: 0 },
+      eFactors: { average: 0, distribution: [] },
+      intervals: { average: 0, distribution: [] }
+    };
+    let totalEFactor = 0;
+    let totalInterval = 0;
+    let cardsWithSchedule = 0;
+    const eFactorBuckets = /* @__PURE__ */ new Map();
+    const intervalBuckets = /* @__PURE__ */ new Map();
+    allCards.forEach((card) => {
+      stats.overview.totalCards++;
+      if (!card.scheduleInfo) {
+        stats.overview.newCards++;
+        stats.repetitions.rep0++;
+      } else {
+        cardsWithSchedule++;
+        const repetition = card.scheduleInfo.repetition || 0;
+        const eFactor = card.scheduleInfo.ease / 100;
+        const interval = card.scheduleInfo.interval;
+        totalEFactor += eFactor;
+        totalInterval += interval;
+        if (repetition === 1)
+          stats.repetitions.rep1++;
+        else if (repetition === 2)
+          stats.repetitions.rep2++;
+        else if (repetition >= 3)
+          stats.repetitions.rep3Plus++;
+        else
+          stats.repetitions.rep0++;
+        if (interval >= 21) {
+          stats.overview.matureCards++;
+        } else {
+          stats.overview.learningCards++;
+        }
+        const eFactorRange = this.getEFactorRange(eFactor);
+        eFactorBuckets.set(eFactorRange, (eFactorBuckets.get(eFactorRange) || 0) + 1);
+        const intervalRange = this.getIntervalRange(interval);
+        intervalBuckets.set(intervalRange, (intervalBuckets.get(intervalRange) || 0) + 1);
+      }
+    });
+    stats.eFactors.average = cardsWithSchedule > 0 ? Math.round(totalEFactor / cardsWithSchedule * 100) / 100 : 0;
+    stats.intervals.average = cardsWithSchedule > 0 ? Math.round(totalInterval / cardsWithSchedule) : 0;
+    stats.eFactors.distribution = Array.from(eFactorBuckets.entries()).map(([range, count]) => ({ range, count })).sort((a, b) => parseFloat(a.range.split("-")[0]) - parseFloat(b.range.split("-")[0]));
+    stats.intervals.distribution = Array.from(intervalBuckets.entries()).map(([range, count]) => ({ range, count })).sort((a, b) => this.compareIntervalRanges(a.range, b.range));
+    return stats;
+  }
+  /**
+   * Get E-Factor range for grouping
+   */
+  getEFactorRange(eFactor) {
+    if (eFactor < 1.5)
+      return "1.3-1.5";
+    if (eFactor < 2)
+      return "1.5-2.0";
+    if (eFactor < 2.5)
+      return "2.0-2.5";
+    if (eFactor < 3)
+      return "2.5-3.0";
+    if (eFactor < 3.5)
+      return "3.0-3.5";
+    return "3.5+";
+  }
+  /**
+   * Get interval range for grouping
+   */
+  getIntervalRange(interval) {
+    if (interval === 1)
+      return "1 day";
+    if (interval <= 6)
+      return "2-6 days";
+    if (interval <= 20)
+      return "7-20 days";
+    if (interval <= 60)
+      return "21-60 days";
+    if (interval <= 180)
+      return "2-6 months";
+    if (interval <= 365)
+      return "6-12 months";
+    return "1+ years";
+  }
+  /**
+   * Compare interval ranges for sorting
+   */
+  compareIntervalRanges(a, b) {
+    const order = ["1 day", "2-6 days", "7-20 days", "21-60 days", "2-6 months", "6-12 months", "1+ years"];
+    return order.indexOf(a) - order.indexOf(b);
   }
 };
 

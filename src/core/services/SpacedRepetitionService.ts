@@ -129,7 +129,8 @@ export class SpacedRepetitionService {
                 ease: reviewResult.ease,
                 reviewCount: (card.scheduleInfo?.reviewCount || 0) + 1,
                 lapseCount: (card.scheduleInfo?.lapseCount || 0) + (response === ReviewResponse.Hard ? 1 : 0),
-                delayedDays: card.scheduleInfo?.delayedDays || 0
+                delayedDays: card.scheduleInfo?.delayedDays || 0,
+                repetition: reviewResult.repetition
             }
         };
 
@@ -239,7 +240,8 @@ export class SpacedRepetitionService {
                 ease: reviewResult.ease,
                 reviewCount: (card.scheduleInfo?.reviewCount || 0) + 1,
                 lapseCount: (card.scheduleInfo?.lapseCount || 0) + (difficulty === ReviewResponse.Hard ? 1 : 0),
-                delayedDays: 0
+                delayedDays: 0,
+                repetition: reviewResult.repetition
             }
         };
     }
@@ -306,11 +308,12 @@ export class SpacedRepetitionService {
 
     /**
      * Get the next review intervals for each difficulty level
+     * Shows the exact SM-2 algorithm results with E-Factor information
      */
     getNextReviewIntervals(card: VocabularyCard): {
-        hard: { interval: number; displayText: string };
-        good: { interval: number; displayText: string };
-        easy: { interval: number; displayText: string };
+        hard: { interval: number; displayText: string; eFactor: number; repetition: number };
+        good: { interval: number; displayText: string; eFactor: number; repetition: number };
+        easy: { interval: number; displayText: string; eFactor: number; repetition: number };
     } {
         const hardResult = this.algorithm.schedule(ReviewResponse.Hard, card.scheduleInfo);
         const goodResult = this.algorithm.schedule(ReviewResponse.Good, card.scheduleInfo);
@@ -319,15 +322,21 @@ export class SpacedRepetitionService {
         return {
             hard: {
                 interval: hardResult.interval,
-                displayText: this.formatInterval(hardResult.interval)
+                displayText: this.formatInterval(hardResult.interval),
+                eFactor: hardResult.ease / 100, // Convert back to E-Factor
+                repetition: hardResult.repetition
             },
             good: {
                 interval: goodResult.interval,
-                displayText: this.formatInterval(goodResult.interval)
+                displayText: this.formatInterval(goodResult.interval),
+                eFactor: goodResult.ease / 100,
+                repetition: goodResult.repetition
             },
             easy: {
                 interval: easyResult.interval,
-                displayText: this.formatInterval(easyResult.interval)
+                displayText: this.formatInterval(easyResult.interval),
+                eFactor: easyResult.ease / 100,
+                repetition: easyResult.repetition
             }
         };
     }
@@ -349,5 +358,130 @@ export class SpacedRepetitionService {
             const years = Math.round(days / 365 * 10) / 10;
             return `${years} year${years > 1 ? 's' : ''}`;
         }
+    }
+
+    /**
+     * Get detailed SM-2 algorithm statistics
+     */
+    getSM2Statistics(allCards: VocabularyCard[]): {
+        overview: {
+            totalCards: number;
+            newCards: number;
+            learningCards: number;
+            matureCards: number;
+        };
+        repetitions: {
+            rep0: number; // 새 카드
+            rep1: number; // 첫 번째 복습
+            rep2: number; // 두 번째 복습
+            rep3Plus: number; // 세 번째 이상 복습
+        };
+        eFactors: {
+            average: number;
+            distribution: { range: string; count: number }[];
+        };
+        intervals: {
+            average: number;
+            distribution: { range: string; count: number }[];
+        };
+    } {
+        const stats = {
+            overview: { totalCards: 0, newCards: 0, learningCards: 0, matureCards: 0 },
+            repetitions: { rep0: 0, rep1: 0, rep2: 0, rep3Plus: 0 },
+            eFactors: { average: 0, distribution: [] as { range: string; count: number }[] },
+            intervals: { average: 0, distribution: [] as { range: string; count: number }[] }
+        };
+
+        let totalEFactor = 0;
+        let totalInterval = 0;
+        let cardsWithSchedule = 0;
+        const eFactorBuckets = new Map<string, number>();
+        const intervalBuckets = new Map<string, number>();
+
+        allCards.forEach(card => {
+            stats.overview.totalCards++;
+
+            if (!card.scheduleInfo) {
+                stats.overview.newCards++;
+                stats.repetitions.rep0++;
+            } else {
+                cardsWithSchedule++;
+                const repetition = card.scheduleInfo.repetition || 0;
+                const eFactor = card.scheduleInfo.ease / 100;
+                const interval = card.scheduleInfo.interval;
+
+                totalEFactor += eFactor;
+                totalInterval += interval;
+
+                // Repetition 분포
+                if (repetition === 1) stats.repetitions.rep1++;
+                else if (repetition === 2) stats.repetitions.rep2++;
+                else if (repetition >= 3) stats.repetitions.rep3Plus++;
+                else stats.repetitions.rep0++;
+
+                // Mature/Learning 분류
+                if (interval >= 21) {
+                    stats.overview.matureCards++;
+                } else {
+                    stats.overview.learningCards++;
+                }
+
+                // E-Factor 분포
+                const eFactorRange = this.getEFactorRange(eFactor);
+                eFactorBuckets.set(eFactorRange, (eFactorBuckets.get(eFactorRange) || 0) + 1);
+
+                // Interval 분포
+                const intervalRange = this.getIntervalRange(interval);
+                intervalBuckets.set(intervalRange, (intervalBuckets.get(intervalRange) || 0) + 1);
+            }
+        });
+
+        // 평균 계산
+        stats.eFactors.average = cardsWithSchedule > 0 ? Math.round((totalEFactor / cardsWithSchedule) * 100) / 100 : 0;
+        stats.intervals.average = cardsWithSchedule > 0 ? Math.round(totalInterval / cardsWithSchedule) : 0;
+
+        // 분포 배열 생성
+        stats.eFactors.distribution = Array.from(eFactorBuckets.entries())
+            .map(([range, count]) => ({ range, count }))
+            .sort((a, b) => parseFloat(a.range.split('-')[0]) - parseFloat(b.range.split('-')[0]));
+
+        stats.intervals.distribution = Array.from(intervalBuckets.entries())
+            .map(([range, count]) => ({ range, count }))
+            .sort((a, b) => this.compareIntervalRanges(a.range, b.range));
+
+        return stats;
+    }
+
+    /**
+     * Get E-Factor range for grouping
+     */
+    private getEFactorRange(eFactor: number): string {
+        if (eFactor < 1.5) return '1.3-1.5';
+        if (eFactor < 2.0) return '1.5-2.0';
+        if (eFactor < 2.5) return '2.0-2.5';
+        if (eFactor < 3.0) return '2.5-3.0';
+        if (eFactor < 3.5) return '3.0-3.5';
+        return '3.5+';
+    }
+
+    /**
+     * Get interval range for grouping
+     */
+    private getIntervalRange(interval: number): string {
+        if (interval === 1) return '1 day';
+        if (interval <= 6) return '2-6 days';
+        if (interval <= 20) return '7-20 days';
+        if (interval <= 60) return '21-60 days';
+        if (interval <= 180) return '2-6 months';
+        if (interval <= 365) return '6-12 months';
+        return '1+ years';
+    }
+
+    /**
+     * Compare interval ranges for sorting
+     */
+    private compareIntervalRanges(a: string, b: string): number {
+        const order = ['1 day', '2-6 days', '7-20 days', '21-60 days', '2-6 months', '6-12 months', '1+ years'];
+        return order.indexOf(a) - order.indexOf(b);
     }
 }

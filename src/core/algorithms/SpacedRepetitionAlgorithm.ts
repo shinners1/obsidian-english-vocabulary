@@ -1,46 +1,69 @@
 import { Moment } from 'moment';
 
 export enum ReviewResponse {
-    Easy = 'easy',
-    Good = 'good', 
-    Hard = 'hard'
+    Hard = 'hard',    // q = 1: 매우 어렵게 회상하거나 거의 실패에 가까운 경우
+    Good = 'good',    // q = 2: 약간의 노력을 들여 회상한 경우  
+    Easy = 'easy'     // q = 3: 쉽게 완전 회상한 경우
 }
 
+// SM-2 알고리즘의 품질 점수 매핑
+export const QUALITY_SCORES = {
+    [ReviewResponse.Hard]: 1,
+    [ReviewResponse.Good]: 2,
+    [ReviewResponse.Easy]: 3
+} as const;
+
 export interface SRSSettings {
-    baseEase: number;           // Starting ease factor (250%)
-    easyBonus: number;          // Multiplier for easy responses (1.3)
-    hardPenalty: number;        // Multiplier for hard responses (0.5)
-    minimumEase: number;        // Minimum ease factor (130%)
+    // SM-2 Algorithm Settings
+    initialEFactor: number;     // SM-2 초기 E-Factor (2.5)
+    minimumEFactor: number;     // SM-2 최소 E-Factor (1.3)
     maximumInterval: number;    // Maximum interval in days (36525 = ~100 years)
-    initialInterval: number;    // Starting interval in days (1)
+    
+    // Load Balancing Settings
     loadBalance: boolean;       // Enable review load balancing
     maxFuzzingDays: number;     // Maximum fuzzing for load balancing (3)
+    
+    // Legacy compatibility (deprecated but kept for backward compatibility)
+    baseEase: number;           // Starting ease factor (250%) - converted to EFactor
+    easyBonus: number;          // Multiplier for easy responses (1.3) - not used in SM-2
+    hardPenalty: number;        // Multiplier for hard responses (0.5) - not used in SM-2
+    minimumEase: number;        // Minimum ease factor (130%) - converted to EFactor
+    initialInterval: number;    // Starting interval in days (1) - not used in SM-2
 }
 
 export const DEFAULT_SRS_SETTINGS: SRSSettings = {
-    baseEase: 250,
+    // SM-2 Algorithm Settings
+    initialEFactor: 2.5,        // SM-2 표준 초기 E-Factor
+    minimumEFactor: 1.3,        // SM-2 표준 최소 E-Factor
+    maximumInterval: 36525,     // ~100년
+    
+    // Load Balancing Settings
+    loadBalance: true,
+    maxFuzzingDays: 3,
+    
+    // Legacy compatibility (will be converted)
+    baseEase: 250,              // 2.5 * 100
     easyBonus: 1.3,
     hardPenalty: 0.5,
-    minimumEase: 130,
-    maximumInterval: 36525,
-    initialInterval: 1,
-    loadBalance: true,
-    maxFuzzingDays: 3
+    minimumEase: 130,           // 1.3 * 100
+    initialInterval: 1
 };
 
 export interface ScheduleInfo {
     dueDate: string;           // ISO date string
     interval: number;          // Days until next review
-    ease: number;              // Ease factor (130-300+)
+    ease: number;              // Ease factor (E-Factor * 100, 130-500+)
     reviewCount: number;       // Total number of reviews
     lapseCount: number;        // Number of hard responses
     delayedDays: number;       // Days delayed before this review
+    repetition: number;        // SM-2 repetition count (연속 성공 회상 횟수)
 }
 
 export interface ReviewResult {
     interval: number;
     ease: number;
     dueDate: string;
+    repetition: number;
 }
 
 export class SpacedRepetitionAlgorithm {
@@ -53,76 +76,87 @@ export class SpacedRepetitionAlgorithm {
 
     /**
      * Calculate the next review schedule based on user response
-     * Based on SM-2-OSR algorithm from obsidian-spaced-repetition
+     * Implements the SM-2 algorithm according to learning_algorithm.md specification
      */
     schedule(
         response: ReviewResponse,
         currentSchedule?: ScheduleInfo
     ): ReviewResult {
         const now = new Date();
+        const q = QUALITY_SCORES[response]; // 품질 점수: 1(hard), 2(good), 3(easy)
         
         // Initialize schedule info for new cards
         if (!currentSchedule) {
             currentSchedule = {
                 dueDate: now.toISOString(),
                 interval: 0,
-                ease: this.settings.baseEase,
+                ease: Math.round(this.settings.initialEFactor * 100), // E-Factor를 100으로 곱해서 저장
                 reviewCount: 0,
                 lapseCount: 0,
-                delayedDays: 0
+                delayedDays: 0,
+                repetition: 0
             };
         }
 
-        // Calculate days delayed (for cards reviewed late)
-        const dueDate = new Date(currentSchedule.dueDate);
-        const delayedDays = Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
-
-        let newInterval = currentSchedule.interval;
-        let newEase = currentSchedule.ease;
-
-        // Apply SM-2-OSR scheduling algorithm
-        switch (response) {
-            case ReviewResponse.Easy:
-                newEase = Math.min(500, newEase + 20); // Cap at 500%
-                newInterval = Math.max(1, ((currentSchedule.interval + delayedDays) * newEase * this.settings.easyBonus) / 100);
-                break;
-
-            case ReviewResponse.Good:
-                // No ease change for good responses
-                newInterval = Math.max(1, ((currentSchedule.interval + delayedDays / 2) * newEase) / 100);
-                break;
-
-            case ReviewResponse.Hard:
-                newEase = Math.max(this.settings.minimumEase, newEase - 20);
-                newInterval = Math.max(1, (currentSchedule.interval + delayedDays / 4) * this.settings.hardPenalty);
-                break;
+        // 현재 E-Factor 계산 (저장된 값을 100으로 나누어 실제 E-Factor 얻음)
+        let currentEFactor = currentSchedule.ease / 100;
+        let newRepetition = currentSchedule.repetition;
+        
+        // SM-2 Algorithm Step 1: E-Factor 업데이트
+        // EF_new = EF_old + (0.1 - (3-q) * (0.08 + (3-q) * 0.02))
+        const delta = 0.1 - (3 - q) * (0.08 + (3 - q) * 0.02);
+        let newEFactor = currentEFactor + delta;
+        
+        // E-Factor 최소값 제한 (1.3)
+        newEFactor = Math.max(this.settings.minimumEFactor, newEFactor);
+        
+        // SM-2 Algorithm Step 2: Repetition 업데이트
+        if (q >= 2) { // good 또는 easy (q = 2 또는 3)
+            newRepetition = currentSchedule.repetition + 1;
+        } else { // hard (q = 1)
+            newRepetition = 0; // repetition 리셋
         }
-
-        // Apply first-time learning intervals
-        if (currentSchedule.reviewCount === 0) {
-            newInterval = this.settings.initialInterval;
-        } else if (currentSchedule.reviewCount === 1 && response !== ReviewResponse.Hard) {
-            newInterval = 6; // Standard SM-2 second interval
+        
+        // SM-2 Algorithm Step 3: 다음 복습 간격 계산
+        let newInterval: number;
+        
+        if (q < 2) { // hard (q = 1)
+            // hard 응답 시 즉시 복습 (1일 후)
+            newInterval = 1;
+        } else {
+            // good 또는 easy 응답 시 SM-2 간격 공식 적용
+            if (newRepetition === 1) {
+                newInterval = 1;
+            } else if (newRepetition === 2) {
+                newInterval = 6;
+            } else {
+                // n >= 3: I_n = I_(n-1) * EF_new
+                newInterval = Math.round(currentSchedule.interval * newEFactor);
+            }
         }
-
-        // Cap maximum interval
+        
+        // 최대 간격 제한
         newInterval = Math.min(newInterval, this.settings.maximumInterval);
+        
+        // 최소 간격 보장 (1일)
+        newInterval = Math.max(1, newInterval);
 
-        // Apply load balancing if enabled
+        // Load balancing 적용 (선택사항)
         if (this.settings.loadBalance) {
             newInterval = this.applyLoadBalancing(newInterval);
         }
 
-        // Calculate new due date
+        // 새로운 만료일 계산
         const newDueDate = new Date(now.getTime() + newInterval * 24 * 60 * 60 * 1000);
 
-        // Update histogram for load balancing
+        // 히스토그램 업데이트 (load balancing용)
         this.updateDueDateHistogram(newDueDate.toDateString());
 
         return {
-            interval: Math.round(newInterval),
-            ease: Math.round(newEase),
-            dueDate: newDueDate.toISOString()
+            interval: newInterval,
+            ease: Math.round(newEFactor * 100), // E-Factor를 100으로 곱해서 반환
+            dueDate: newDueDate.toISOString(),
+            repetition: newRepetition
         };
     }
 

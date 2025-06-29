@@ -1,0 +1,25 @@
+{
+  "settings": {
+    "apiKey": "",
+    "defaultLanguage": "ko",
+    "showSimilarWords": true,
+    "showExamples": true,
+    "examplesCount": 3,
+    "openaiApiKey": "",
+    "anthropicApiKey": "",
+    "googleApiKey": "",
+    "llmProvider": "openai",
+    "llmModel": "gpt-4.1",
+    "enableAdvancedFeatures": true,
+    "reviewModalHeight": 95,
+    "vocabularyFolderPath": "Vocabulary",
+    "ttsEnabled": true,
+    "ttsVoice": "en-US-JennyNeural",
+    "ttsPlaybackSpeed": 1,
+    "ttsAutoPlay": false,
+    "llmApiKey": "",
+    "dailyGoal": 10,
+    "reviewInterval": 1,
+    "autoSave": true
+  }
+} 

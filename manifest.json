@@ -1,0 +1,10 @@
+{
+    "id": "obsidian-english-vocabulary",
+    "name": "English Vocabulary Learning",
+    "version": "1.0.0",
+    "minAppVersion": "1.2.8",
+    "description": "영어 단어 학습을 위한 플래시카드 플러그인입니다.",
+    "author": "Shinners",
+    "authorUrl": "https://github.com/shinners1/obsidian-english-vocabulary",
+    "isDesktopOnly": false
+} 

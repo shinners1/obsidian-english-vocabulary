@@ -1,0 +1,1290 @@
+/* 영어 단어 학습 플러그인 스타일 */
+
+/* TTS 버튼 스타일 */
+.tts-play-button {
+  background: var(--interactive-accent);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  margin-left: 8px;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+}
+
+.tts-play-button:hover {
+  background: var(--interactive-accent-hover);
+  transform: scale(1.1);
+}
+
+.tts-play-button:active {
+  transform: scale(0.95);
+}
+
+/* 단어 컨테이너 스타일 */
+.word-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.word-play-button {
+  font-size: 16px;
+  width: 36px;
+  height: 36px;
+}
+
+/* 예문 컨테이너 스타일 */
+.example-text-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.example-text-container p {
+  margin: 0;
+  flex: 1;
+}
+
+.example-play-button {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* 모달 기본 스타일 수정 - 너비 문제 해결 */
+.modal {
+  --checkbox-size: var(--font-ui-medium);
+  background-color: var(--modal-background);
+  border-radius: var(--modal-radius);
+  border: var(--modal-border-width) solid var(--modal-border-color);
+  padding: var(--size-4-4);
+  position: relative;
+  min-height: 100px;
+  width: 90vw;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+/* 작은 화면에서의 반응형 처리 */
+@media (max-width: 768px) {
+  .modal {
+    width: 95vw;
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+}
+
+/* 모달별 사이즈 지정 */
+.add-words-modal {
+  width: 480px;
+  max-width: 90vw;
+  min-height: 400px;
+  max-height: 80vh;
+}
+
+.vocabulary-manager-modal.wide-manager-modal {
+  width: 900px;
+  max-width: 95vw;
+  min-height: 500px;
+  max-height: 90vh;
+  background: var(--background-primary);
+  border-radius: 16px;
+  box-shadow: 0 6px 32px rgba(0,0,0,0.16);
+  padding: 36px 44px 28px 44px;
+}
+
+.vocabulary-learning-modal {
+  width: 700px;
+  max-width: 90vw;
+  min-height: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--background-primary);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* 기본 모달 크기 (wide-manager-modal이 아닌 경우) */
+.vocabulary-manager-modal:not(.wide-manager-modal),
+.vocabulary-modal {
+  max-width: 800px;
+  width: 95vw;
+  min-width: 320px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.vocabulary-modal {
+  max-width: 95vw;
+  width: 1000px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.vocabulary-modal .modal-content {
+  padding: 20px;
+}
+
+.vocabulary-learning-modal .modal-content {
+  padding: 24px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 단어장 관리 모달 헤더 */
+.manager-header {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+/* 드롭다운과 버튼 높이 통일 */
+.manager-header .book-select-dropdown {
+  min-width: 260px;
+  max-width: 400px;
+  width: 100%;
+  height: 60px;
+  padding: 5px 10px;
+  font-size: 17px;
+  font-weight: 600;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  flex-grow: 1;
+  border: 1.5px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.book-select-dropdown:focus {
+  border-color: var(--text-accent);
+}
+
+.book-manage-button, .book-delete-button {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 8px 22px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: 0;
+  transition: background-color 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.book-manage-button:hover, .book-delete-button:hover:not(.disabled) {
+  background: var(--interactive-accent-hover);
+}
+
+.book-delete-button {
+  background: var(--background-modifier-error);
+  color: var(--text-on-accent);
+}
+
+.book-delete-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 네비게이션 */
+.manager-navigation {
+  margin-bottom: 18px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.nav-button {
+  height: 40px;
+  min-height: 40px;
+  line-height: 40px;
+  padding: 0 20px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: none;
+  background-color: transparent;
+  color: var(--text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-button:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.nav-button.active {
+  background-color: var(--interactive-accent);
+  color: white;
+}
+
+/* 컨텐츠 영역 */
+.manager-content {
+  min-height: 400px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: visible;
+}
+
+/* 단어 목록 */
+.word-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: visible;
+}
+
+.word-item {
+  display: flex;
+  align-items: flex-start;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+  transition: all 0.2s;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: visible;
+}
+
+.word-item:hover {
+  border-color: var(--text-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.word-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.word-title {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-accent);
+}
+
+.word-title .pronunciation {
+  color: var(--text-muted);
+  font-size: 0.7em;
+  font-weight: normal;
+  margin-left: 6px;
+}
+
+.difficulty-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.difficulty-badge.easy {
+  background-color: #4caf50;
+  color: white;
+}
+
+.difficulty-badge.good {
+  background-color: #2196f3;
+  color: white;
+}
+
+.difficulty-badge.hard {
+  background-color: #f44336;
+  color: white;
+}
+
+.word-content {
+  margin-bottom: 15px;
+}
+
+.word-meanings {
+  margin: 5px 0;
+  color: var(--text-normal);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.review-count,
+.last-reviewed {
+  margin: 3px 0;
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+/* 단어 액션 버튼들 - 오른쪽 정렬 */
+.word-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.action-button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.2s ease;
+}
+
+.fetch-single-button {
+  background-color: #ff9800;
+  color: white;
+}
+
+.fetch-single-button:hover {
+  background-color: #f57c00;
+}
+
+.delete-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.delete-button:hover {
+  background-color: #d32f2f;
+}
+
+/* 체크박스 */
+.word-checkbox {
+  margin-right: 10px;
+  transform: scale(1.2);
+}
+
+/* 검색 섹션 */
+.search-section {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.search-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+}
+
+/* 선택 컨트롤 */
+.selection-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.selection-button {
+  padding: 8px 16px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.selection-button:hover {
+  background: var(--background-modifier-border-hover);
+}
+
+.fetch-selected-button {
+  padding: 8px 16px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.fetch-selected-button:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* 통계 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.stats-section {
+  padding: 20px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background-color: var(--background-primary);
+}
+
+.stats-title {
+  margin: 0 0 15px 0;
+  color: var(--text-normal);
+  font-size: 1.1em;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.stat-value {
+  color: var(--text-normal);
+  font-weight: 500;
+}
+
+/* 빈 상태 */
+.empty-message {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 40px 0;
+}
+
+/* 학습 카드 */
+.vocabulary-card {
+  background: var(--background-secondary);
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+/* 카드 상단 정보 영역 */
+.card-top-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  width: 100%;
+}
+
+.card-delete-button {
+  padding: 8px 16px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.card-delete-button:hover {
+  background-color: #d32f2f;
+}
+
+/* 단어장 정보 표시 */
+.book-info-display {
+  background: var(--background-secondary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+}
+
+.current-book-name {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* 예문 컨테이너 */
+.example-container {
+  margin-bottom: 15px;
+  padding: 15px;
+  background: var(--background-primary);
+  border-radius: 8px;
+  border-left: 4px solid var(--text-accent);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.english-example {
+  margin: 0 0 10px 0;
+  font-style: italic;
+  color: var(--text-normal);
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.korean-example {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  border-left: 3px solid var(--text-muted);
+  padding-left: 12px;
+  line-height: 1.4;
+  font-style: normal;
+}
+
+.example-sentence {
+  background: var(--background-primary);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border-left: 4px solid var(--text-accent);
+  font-style: italic;
+  color: var(--text-normal);
+}
+
+/* 정답 확인 버튼 */
+.check-answer-button {
+  padding: 17px 0;
+  background-color: var(--interactive-accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: block;
+  text-align: center;
+  line-height: 1.2;
+  min-height: 50px;
+}
+
+.check-answer-button:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* 정답 섹션 */
+.answer-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid var(--background-modifier-border);
+}
+
+.answer-section h3 {
+  color: var(--text-accent);
+  font-size: 20px;
+  margin-bottom: 15px;
+}
+
+.meanings-list {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 25px;
+}
+
+.meanings-list li {
+  background: var(--background-primary);
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  border-left: 4px solid var(--text-accent);
+  color: var(--text-normal);
+  font-size: 16px;
+}
+
+.translation {
+  background: var(--background-primary);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  font-size: 14px;
+  border-left: 4px solid var(--text-muted);
+}
+
+/* 복습 버튼 */
+.review-buttons-section {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+  justify-content: center;
+}
+
+.review-button {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 100px;
+}
+
+.hard-button {
+  background: var(--text-error);
+  color: white;
+}
+
+.hard-button:hover {
+  background: var(--text-error-hover);
+  transform: translateY(-2px);
+}
+
+.good-button {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.good-button:hover {
+  background: var(--interactive-accent-hover);
+  transform: translateY(-2px);
+}
+
+.easy-button {
+  background: var(--interactive-success);
+  color: var(--text-on-accent);
+}
+
+.easy-button:hover {
+  background: var(--interactive-success-hover);
+  transform: translateY(-2px);
+}
+
+/* 완료 메시지 */
+.completion-message {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.completion-message h2 {
+  color: var(--text-accent);
+  font-size: 28px;
+  margin-bottom: 15px;
+}
+
+.completion-message p {
+  color: var(--text-normal);
+  font-size: 16px;
+  margin-bottom: 30px;
+}
+
+/* 버튼 공통 스타일 */
+.new-word-button,
+.close-button {
+  padding: 12px 24px;
+  margin: 0 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.new-word-button {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.new-word-button:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.close-button {
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+.close-button:hover {
+  background: var(--background-modifier-border-hover);
+}
+
+/* 에러 메시지 */
+.error-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-error);
+}
+
+.error-message p {
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.error-message button {
+  padding: 12px 24px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.error-message button:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* 단어 추가 모달 */
+.modal-title {
+  text-align: center;
+  color: var(--text-accent);
+  margin-bottom: 15px;
+  font-size: 24px;
+}
+
+.modal-description {
+  text-align: center;
+  color: var(--text-muted);
+  margin-bottom: 25px;
+  font-size: 14px;
+}
+
+.input-section {
+  margin-bottom: 25px;
+}
+
+.words-textarea {
+  width: 100%;
+  padding: 15px;
+  border: 2px solid var(--background-modifier-border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: var(--font-monospace);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  resize: vertical;
+  min-height: 200px;
+}
+
+.words-textarea:focus {
+  outline: none;
+  border-color: var(--text-accent);
+}
+
+.example-button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.example-button:hover {
+  background: var(--background-modifier-border-hover);
+}
+
+.button-section {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-bottom: 25px;
+}
+
+.add-button {
+  padding: 12px 24px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-button:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.add-button:disabled {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.cancel-button {
+  padding: 12px 24px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancel-button:hover {
+  background: var(--background-modifier-border-hover);
+}
+
+/* 진행 상황 */
+.progress-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+}
+
+.progress-text {
+  text-align: center;
+  margin-bottom: 15px;
+  color: var(--text-normal);
+  font-weight: bold;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--background-modifier-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--interactive-accent);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+/* 결과 표시 */
+.result-section {
+  margin-top: 25px;
+  padding: 20px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+}
+
+.results-summary {
+  margin-bottom: 20px;
+}
+
+.result-item {
+  margin-bottom: 15px;
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 4px solid;
+}
+
+.result-item.success {
+  background: var(--background-success);
+  border-left-color: var(--text-success);
+}
+
+.result-item.warning {
+  background: var(--background-warning);
+  border-left-color: var(--text-warning);
+}
+
+.result-item.error {
+  background: var(--background-error);
+  border-left-color: var(--text-error);
+}
+
+.result-count {
+  font-weight: bold;
+  font-size: 16px;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.result-words {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.result-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.add-more-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.add-more-button:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* 단어장 선택 */
+.book-select-section {
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.book-select-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.book-select-container {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.add-book-button {
+  padding: 10px 16px;
+  background: var(--interactive-success);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.add-book-button:hover {
+  background: var(--interactive-success-hover);
+}
+
+/* 선택된 단어 태그 */
+.selected-word-tag {
+  display: inline-block;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  margin: 2px;
+}
+
+.words-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1200px) {
+  .vocabulary-manager-modal.wide-manager-modal {
+    max-width: 98vw;
+    min-width: 0;
+    padding: 10px 2vw;
+  }
+  
+  .manager-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .book-select-dropdown {
+    min-width: 120px;
+    font-size: 15px;
+  }
+  
+  .book-manage-button, .book-delete-button {
+    font-size: 13px;
+    padding: 7px 12px;
+  }
+  
+  .vocabulary-learning-modal {
+    width: 95vw;
+    max-width: 95vw;
+  }
+}
+
+@media (max-width: 768px) {
+  .vocabulary-manager-modal,
+  .vocabulary-modal {
+    max-width: 100vw;
+    width: 100vw;
+    min-width: 0;
+    padding: 0;
+  }
+  
+  .nav-button {
+    font-size: 0.95rem;
+    padding: 0 10px;
+    height: 36px;
+    min-height: 36px;
+    line-height: 36px;
+  }
+  
+  .manager-navigation {
+    flex-direction: column;
+  }
+  
+  .search-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .word-actions {
+    flex-direction: column;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .review-buttons {
+    flex-direction: column;
+  }
+  
+  .button-section {
+    flex-direction: column;
+  }
+  
+  .vocabulary-learning-modal {
+    width: 98vw;
+    max-width: 98vw;
+    max-height: 95vh;
+  }
+  
+  .vocabulary-learning-modal .modal-content {
+    padding: 16px;
+  }
+  
+  .book-select-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .add-book-button {
+    order: -1;
+  }
+  
+  .add-book-modal {
+    width: 95vw;
+    max-width: 95vw;
+  }
+}
+
+@media (max-width: 480px) {
+  .vocabulary-learning-modal {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+}
+
+/* 카드 단어 */
+.card-word {
+  text-align: center;
+  font-size: 36px;
+  font-weight: bold;
+  color: var(--text-accent);
+  margin-bottom: 25px;
+  text-transform: capitalize;
+}
+
+.pronunciation {
+  color: var(--text-muted);
+  font-size: 0.6em;
+  font-weight: normal;
+  margin-left: 8px;
+}
+
+/* 유사한 단어들, 예문들 섹션 */
+.similar-words-section,
+.examples-section {
+  margin-bottom: 25px;
+}
+
+.similar-words-section h3,
+.examples-section h3 {
+  color: var(--text-muted);
+  font-size: 18px;
+  margin-bottom: 10px;
+  border-bottom: 2px solid var(--background-modifier-border);
+  padding-bottom: 5px;
+}
+
+.similar-words-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.similar-words-list li {
+  background: var(--background-modifier-border);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  color: var(--text-normal);
+}
+
+/* 예문 컨테이너 */
+.example-container {
+  margin-bottom: 15px;
+  padding: 15px;
+  background: var(--background-primary);
+  border-radius: 8px;
+  border-left: 4px solid var(--text-accent);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.english-example {
+  margin: 0 0 10px 0;
+  font-style: italic;
+  color: var(--text-normal);
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.korean-example {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  border-left: 3px solid var(--text-muted);
+  padding-left: 12px;
+  line-height: 1.4;
+  font-style: normal;
+}
+
+.example-sentence {
+  background: var(--background-primary);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border-left: 4px solid var(--text-accent);
+  font-style: italic;
+  color: var(--text-normal);
+}
+
+/* 확인 모달 스타일 */
+.confirm-modal {
+  width: 500px;
+  max-width: 90vw;
+  min-height: 300px;
+  max-height: 80vh;
+  background: var(--background-primary);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+}
+
+.confirm-modal .modal-title {
+  color: var(--text-error);
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.confirm-modal .modal-message {
+  color: var(--text-normal);
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 30px;
+  white-space: pre-line;
+  background: var(--background-secondary);
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid var(--text-error);
+}
+
+.confirm-modal .button-section {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: auto;
+}
+
+.confirm-modal .confirm-button {
+  padding: 12px 24px;
+  background: var(--text-error);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.confirm-modal .confirm-button:hover {
+  background: var(--text-error-hover);
+}
+
+.confirm-modal .cancel-button {
+  padding: 12px 24px;
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.confirm-modal .cancel-button:hover {
+  background: var(--background-modifier-border-hover);
+}

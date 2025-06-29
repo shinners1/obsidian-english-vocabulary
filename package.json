@@ -1,0 +1,36 @@
+{
+    "name": "obsidian-english-vocabulary",
+    "version": "1.0.0",
+    "description": "영어 단어 학습을 위한 플래시카드 플러그인",
+    "main": "main.js",
+    "scripts": {
+        "build": "node esbuild.config.mjs production",
+        "dev": "node esbuild.config.mjs",
+        "format": "prettier --write .",
+        "lint": "eslint src/ --ext .ts"
+    },
+    "keywords": [
+        "obsidian",
+        "vocabulary",
+        "flashcard",
+        "english",
+        "learning"
+    ],
+    "author": "Shinners",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "@typescript-eslint/eslint-plugin": "^6.0.0",
+        "@typescript-eslint/parser": "^6.0.0",
+        "builtin-modules": "^5.0.0",
+        "esbuild": "^0.19.0",
+        "eslint": "^8.0.0",
+        "obsidian": "^1.5.0",
+        "prettier": "^3.0.0",
+        "tslib": "^2.6.0",
+        "typescript": "^5.0.0"
+    },
+    "dependencies": {
+        "axios": "^1.6.0"
+    }
+}

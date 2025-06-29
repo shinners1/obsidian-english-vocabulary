@@ -1,5 +1,5 @@
 import { Modal, App, Notice } from 'obsidian';
-import EnglishVocabularyPlugin from './main';
+import EnglishVocabularyPlugin from '../../../main';
 
 export class AddBookModal extends Modal {
     plugin: EnglishVocabularyPlugin;

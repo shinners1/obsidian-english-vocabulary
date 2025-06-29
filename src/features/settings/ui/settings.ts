@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice, TFolder } from 'obsidian';
-import EnglishVocabularyPlugin from './main';
-import { LLMService } from './LLMService';
-import { encryptApiKey, decryptApiKey, maskApiKey } from './utils';
+import EnglishVocabularyPlugin from '../../../main';
+import { LLMService } from '../../../infrastructure/llm/LLMService';
+import { encryptApiKey, decryptApiKey, maskApiKey } from '../../../utils';
 
 export interface VocabularySettings {
     apiKey: string;

@@ -1,7 +1,7 @@
 import { Modal, App, Notice } from 'obsidian';
-import EnglishVocabularyPlugin from './main';
-import { VocabularyCard } from './VocabularyCard';
-import { TTSService } from './TTSService';
+import EnglishVocabularyPlugin from '../../../main';
+import { VocabularyCard } from '../../../VocabularyCard';
+import { TTSService } from '../../../infrastructure/tts/TTSService';
 
 export class VocabularyModal extends Modal {
     plugin: EnglishVocabularyPlugin;

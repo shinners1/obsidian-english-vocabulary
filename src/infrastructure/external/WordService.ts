@@ -1,4 +1,4 @@
-import { WordData } from './VocabularyCard';
+import { WordData } from '../../VocabularyCard';
 
 export class WordService {
     private apiBaseUrl = 'https://api.dictionaryapi.dev/api/v2/entries/en';
@@ -19,6 +19,7 @@ export class WordService {
         const sampleData: { [key: string]: WordData } = {
             'beautiful': {
                 word: 'beautiful',
+                pronunciation: '/ˈbjuːtɪfəl/',
                 meanings: ['아름다운', '예쁜', '훌륭한'],
                 similarWords: ['pretty', 'gorgeous', 'stunning', 'attractive'],
                 examples: [
@@ -38,6 +39,7 @@ export class WordService {
             },
             'happy': {
                 word: 'happy',
+                pronunciation: '/ˈhæpi/',
                 meanings: ['행복한', '기쁜', '즐거운'],
                 similarWords: ['joyful', 'cheerful', 'glad', 'pleased'],
                 examples: [
@@ -57,6 +59,7 @@ export class WordService {
             },
             'learn': {
                 word: 'learn',
+                pronunciation: '/lɜːrn/',
                 meanings: ['배우다', '학습하다', '익히다'],
                 similarWords: ['study', 'acquire', 'grasp', 'understand'],
                 examples: [
@@ -84,6 +87,7 @@ export class WordService {
         // 기본 데이터 반환
         return {
             word: word,
+            pronunciation: '/pronunciation/',
             meanings: ['의미를 찾을 수 없습니다.'],
             similarWords: [],
             examples: [

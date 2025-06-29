@@ -2,6 +2,7 @@ import { Book, BookStatistics, BookListOptions } from '../../entities/Book';
 
 export interface IBookRepository {
     // 기본 CRUD 작업
+    add(book: Book): Promise<void>;
     save(book: Book): Promise<void>;
     findById(id: string): Promise<Book | null>;
     findAll(options?: BookListOptions): Promise<Book[]>;

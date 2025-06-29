@@ -1,10 +1,10 @@
 import { Modal, App, Notice } from 'obsidian';
-import EnglishVocabularyPlugin from './main';
-import { VocabularyCard, Book } from './VocabularyCard';
-import { VocabularyDatabaseManager } from './VocabularyDatabase';
-import { WordService } from './WordService';
-import { LLMService } from './LLMService';
-import { VocabularyModal } from './VocabularyModal';
+import EnglishVocabularyPlugin from '../../../main';
+import { VocabularyCard, Book } from '../../../VocabularyCard';
+import { VocabularyDatabaseManager } from '../../../infrastructure/storage/VocabularyDatabase';
+import { WordService } from '../../../infrastructure/external/WordService';
+import { LLMService } from '../../../infrastructure/llm/LLMService';
+import { VocabularyModal } from '../../vocabulary-learning/ui/VocabularyModal';
 import { AddBookModal } from './AddBookModal';
 
 export class VocabularyManagerModal extends Modal {

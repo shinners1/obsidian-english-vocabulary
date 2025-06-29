@@ -3,6 +3,7 @@ import { SearchOptions } from '../../../shared/lib/types';
 
 export interface IVocabularyRepository {
     // 기본 CRUD 작업
+    add(card: VocabularyCard): Promise<void>;
     save(card: VocabularyCard): Promise<void>;
     findByWord(word: string): Promise<VocabularyCard | null>;
     findAll(): Promise<VocabularyCard[]>;

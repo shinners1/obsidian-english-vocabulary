@@ -1,7 +1,7 @@
 import { Modal, App, Notice } from 'obsidian';
-import EnglishVocabularyPlugin from './main';
-import { WordService } from './WordService';
-import { AddBookModal } from './AddBookModal';
+import EnglishVocabularyPlugin from '../../../main';
+import { WordService } from '../../../infrastructure/external/WordService';
+import { AddBookModal } from '../../book-management/ui/AddBookModal';
 
 export class AddWordsModal extends Modal {
     plugin: EnglishVocabularyPlugin;

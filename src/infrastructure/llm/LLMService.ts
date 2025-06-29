@@ -1,6 +1,6 @@
-import { VocabularySettings } from './settings';
-import { WordData } from './VocabularyCard';
-import { decryptApiKey } from './utils';
+import { VocabularySettings } from '../../features/settings/ui/settings';
+import { WordData } from '../../VocabularyCard';
+import { decryptApiKey } from '../../utils';
 import axios from 'axios';
 
 export interface LLMResponse {

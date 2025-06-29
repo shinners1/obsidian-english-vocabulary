@@ -1,29 +1,33 @@
 import { Plugin } from 'obsidian';
-import { VocabularySettings, DEFAULT_SETTINGS, VocabularySettingTab } from './settings';
-import { VocabularyModal } from './VocabularyModal';
+import { VocabularySettings, DEFAULT_SETTINGS, VocabularySettingTab } from './features/settings/ui/settings';
+import { VocabularyModal } from './features/vocabulary-learning/ui/VocabularyModal';
 import { VocabularyCard } from './VocabularyCard';
-import { VocabularyManagerModal } from './VocabularyManagerModal';
-import { VocabularyDatabaseManager } from './VocabularyDatabase';
-import { AddWordsModal } from './AddWordsModal';
-import { AddBookModal } from './AddBookModal';
-import { LLMService } from './LLMService';
+import { VocabularyManagerModal } from './features/book-management/ui/VocabularyManagerModal';
+import { VocabularyDatabaseManager } from './infrastructure/storage/VocabularyDatabase';
+import { AddWordsModal } from './features/word-management/ui/AddWordsModal';
+import { AddBookModal } from './features/book-management/ui/AddBookModal';
+import { LLMService } from './infrastructure/llm/LLMService';
+
+// DI Container
+import { DIContainer, container } from './shared/container/DIContainer';
+import { ServiceRegistry } from './shared/container/ServiceRegistry';
 
 export default class EnglishVocabularyPlugin extends Plugin {
     settings: VocabularySettings;
     databaseManager: VocabularyDatabaseManager;
-    llmService: LLMService;
+    private container: DIContainer;
 
     async onload() {
         console.log('영어 단어 학습 플러그인이 로드되었습니다.');
 
         await this.loadSettings();
 
-        // 데이터베이스 매니저 초기화 (App 인스턴스 전달)
-        this.databaseManager = new VocabularyDatabaseManager(
-            this.app,
-            () => this.saveAllData(),
-            this.settings.vocabularyFolderPath
-        );
+        // DI Container 초기화
+        this.container = container;
+        ServiceRegistry.registerServices(this.container, this.app, this.settings);
+
+        // 데이터베이스 매니저 가져오기
+        this.databaseManager = this.container.resolve<VocabularyDatabaseManager>('databaseManager');
         
         // MD 파일 기반 데이터 로드
         try {
@@ -33,9 +37,6 @@ export default class EnglishVocabularyPlugin extends Plugin {
             // 기존 data.json에서 마이그레이션 시도
             await this.migrateFromLegacyData();
         }
-
-        // LLM 서비스 초기화
-        this.llmService = new LLMService(this.settings);
 
         // 설정 탭 추가
         this.addSettingTab(new VocabularySettingTab(this.app, this));
@@ -94,6 +95,11 @@ export default class EnglishVocabularyPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveAllData();
+        
+        // DI Container에 설정 업데이트
+        if (this.container) {
+            ServiceRegistry.updateSettings(this.container, this.settings);
+        }
     }
 
     // 기존 data.json에서 MD 파일로 마이그레이션

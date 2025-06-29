@@ -156,6 +156,27 @@ export class VocabularyCard {
         
         return errors;
     }
+
+    static create(data: {
+        word: string;
+        meaning: string;
+        pronunciation?: string;
+        examples?: string[];
+        bookId?: string;
+    }): VocabularyCard {
+        return new VocabularyCard(
+            data.word,
+            data.pronunciation || '',
+            [data.meaning], // meanings array
+            [], // similarWords
+            data.examples?.map(ex => ({ english: ex, korean: '' })) || [], // examples with Example type
+            0, // reviewCount
+            'good', // difficulty
+            null, // lastReviewed
+            new Date().toISOString(), // addedDate
+            data.bookId || 'default'
+        );
+    }
 }
 
 // 데이터 전송용 인터페이스 (기존 호환성 유지)

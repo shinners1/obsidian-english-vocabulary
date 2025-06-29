@@ -1,4 +1,4 @@
-import { VocabularyCard, Book } from './VocabularyCard';
+import { VocabularyCard, Book } from '../../VocabularyCard';
 import { App, TFile, TFolder, normalizePath } from 'obsidian';
 
 export interface DatabaseData {

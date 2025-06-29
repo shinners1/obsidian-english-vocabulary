@@ -6,6 +6,7 @@ import { WordService } from '../../../infrastructure/external/WordService';
 import { LLMService } from '../../../infrastructure/llm/LLMService';
 import { VocabularyModal } from '../../vocabulary-learning/ui/VocabularyModal';
 import { AddBookModal } from './AddBookModal';
+import { formatDate } from '../../../utils';
 
 export class VocabularyManagerModal extends Modal {
     plugin: EnglishVocabularyPlugin;
@@ -297,9 +298,8 @@ export class VocabularyManagerModal extends Modal {
         });
 
         if (word.lastReviewed) {
-            const lastReviewDate = new Date(word.lastReviewed).toLocaleDateString('ko-KR');
             wordContent.createEl('p', { 
-                text: `마지막 복습: ${lastReviewDate}`,
+                text: `마지막 복습: ${formatDate(word.lastReviewed)}`,
                 cls: 'last-reviewed'
             });
         }

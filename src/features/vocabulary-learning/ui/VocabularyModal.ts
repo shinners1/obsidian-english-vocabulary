@@ -1,7 +1,8 @@
 import { Modal, App, Notice } from 'obsidian';
 import EnglishVocabularyPlugin from '../../../main';
 import { VocabularyCard } from '../../../VocabularyCard';
-import { TTSService } from '../../../infrastructure/tts/TTSService';
+import { TTSService } from '../../../infrastructure/tts/TTSInterface';
+import { TTSServiceFactory } from '../../../infrastructure/tts/TTSService';
 import { SpacedRepetitionService, ReviewSession } from '../../../core/services/SpacedRepetitionService';
 import { ReviewResponse } from '../../../core/algorithms/SpacedRepetitionAlgorithm';
 
@@ -18,12 +19,7 @@ export class VocabularyModal extends Modal {
     constructor(app: App, plugin: EnglishVocabularyPlugin) {
         super(app);
         this.plugin = plugin;
-        this.ttsService = new TTSService({
-            enabled: plugin.settings.ttsEnabled,
-            voice: plugin.settings.ttsVoice,
-            playbackSpeed: plugin.settings.ttsPlaybackSpeed,
-            autoPlay: plugin.settings.ttsAutoPlay
-        });
+        this.ttsService = TTSServiceFactory.createTTSService(plugin.settings);
         this.spacedRepetitionService = new SpacedRepetitionService();
     }
 
@@ -296,16 +292,32 @@ export class VocabularyModal extends Modal {
     private createReviewButtons(container: HTMLElement) {
         const reviewSection = container.createEl('div', { cls: 'review-buttons-section' });
         
-        const hardButton = reviewSection.createEl('button', { text: '어려움' });
+        // Get next review intervals for current card
+        const currentCard = this.cards[this.currentCardIndex];
+        const intervals = this.spacedRepetitionService.getNextReviewIntervals(currentCard);
+        
+        // Hard button with interval
+        const hardButton = reviewSection.createEl('button');
         hardButton.addClass('review-button', 'hard-button');
+        const hardContent = hardButton.createEl('div', { cls: 'button-content' });
+        hardContent.createEl('span', { text: '어려움', cls: 'button-label' });
+        hardContent.createEl('span', { text: intervals.hard.displayText, cls: 'button-interval' });
         hardButton.addEventListener('click', () => this.handleReview('hard'));
 
-        const goodButton = reviewSection.createEl('button', { text: '좋음' });
+        // Good button with interval
+        const goodButton = reviewSection.createEl('button');
         goodButton.addClass('review-button', 'good-button');
+        const goodContent = goodButton.createEl('div', { cls: 'button-content' });
+        goodContent.createEl('span', { text: '좋음', cls: 'button-label' });
+        goodContent.createEl('span', { text: intervals.good.displayText, cls: 'button-interval' });
         goodButton.addEventListener('click', () => this.handleReview('good'));
 
-        const easyButton = reviewSection.createEl('button', { text: '쉬움' });
+        // Easy button with interval
+        const easyButton = reviewSection.createEl('button');
         easyButton.addClass('review-button', 'easy-button');
+        const easyContent = easyButton.createEl('div', { cls: 'button-content' });
+        easyContent.createEl('span', { text: '쉬움', cls: 'button-label' });
+        easyContent.createEl('span', { text: intervals.easy.displayText, cls: 'button-interval' });
         easyButton.addEventListener('click', () => this.handleReview('easy'));
     }
 

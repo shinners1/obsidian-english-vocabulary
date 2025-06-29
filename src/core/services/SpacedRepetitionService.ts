@@ -303,4 +303,51 @@ export class SpacedRepetitionService {
             addedDate: card.addedDate
         }));
     }
+
+    /**
+     * Get the next review intervals for each difficulty level
+     */
+    getNextReviewIntervals(card: VocabularyCard): {
+        hard: { interval: number; displayText: string };
+        good: { interval: number; displayText: string };
+        easy: { interval: number; displayText: string };
+    } {
+        const hardResult = this.algorithm.schedule(ReviewResponse.Hard, card.scheduleInfo);
+        const goodResult = this.algorithm.schedule(ReviewResponse.Good, card.scheduleInfo);
+        const easyResult = this.algorithm.schedule(ReviewResponse.Easy, card.scheduleInfo);
+
+        return {
+            hard: {
+                interval: hardResult.interval,
+                displayText: this.formatInterval(hardResult.interval)
+            },
+            good: {
+                interval: goodResult.interval,
+                displayText: this.formatInterval(goodResult.interval)
+            },
+            easy: {
+                interval: easyResult.interval,
+                displayText: this.formatInterval(easyResult.interval)
+            }
+        };
+    }
+
+    /**
+     * Format interval as human-readable text
+     */
+    private formatInterval(days: number): string {
+        if (days < 1) {
+            return 'today';
+        } else if (days === 1) {
+            return '1 day';
+        } else if (days < 30) {
+            return `${days} day${days > 1 ? 's' : ''}`;
+        } else if (days < 365) {
+            const months = Math.round(days / 30 * 10) / 10;
+            return `${months} month${months > 1 ? 's' : ''}`;
+        } else {
+            const years = Math.round(days / 365 * 10) / 10;
+            return `${years} year${years > 1 ? 's' : ''}`;
+        }
+    }
 }

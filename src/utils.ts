@@ -43,4 +43,23 @@ export function maskApiKey(apiKey: string): string {
     if (apiKey.length <= 8) return '*'.repeat(apiKey.length);
     
     return apiKey.substring(0, 4) + '*'.repeat(apiKey.length - 8) + apiKey.substring(apiKey.length - 4);
+}
+
+// 날짜 포맷팅 유틸리티
+export function formatDate(dateString: string | null | undefined): string {
+    if (!dateString) {
+        return '없음';
+    }
+
+    const date = new Date(dateString);
+    
+    if (isNaN(date.getTime())) {
+        return '잘못된 날짜';
+    }
+
+    return date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
 } 

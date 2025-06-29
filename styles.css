@@ -105,7 +105,7 @@
 }
 
 .vocabulary-learning-modal {
-  width: clamp(400px, 85vw, 520px);
+  width: clamp(520px, 110vw, 676px);
   min-height: 420px;
   max-height: 85vh;
   overflow-y: auto;
@@ -253,11 +253,51 @@
   overflow-x: visible;
 }
 
+/* 단어 목록 헤더 */
+.word-list-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto auto;
+  gap: 15px;
+  align-items: center;
+  padding: 12px 15px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.word-list-header .header-checkbox {
+  justify-self: center;
+}
+
+.word-list-header .header-word {
+  text-align: left;
+}
+
+.word-list-header .header-difficulty {
+  text-align: center;
+}
+
+.word-list-header .header-meanings {
+  text-align: left;
+}
+
+.word-list-header .header-review {
+  text-align: center;
+}
+
+.word-list-header .header-actions {
+  text-align: right;
+}
+
 /* 단어 목록 */
 .word-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 8px;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -265,8 +305,10 @@
 }
 
 .word-item {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto auto;
+  gap: 15px;
+  align-items: center;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
@@ -284,25 +326,6 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.word-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.word-title {
-  margin: 0;
-  font-size: 18px;
-  color: var(--text-accent);
-}
-
-.word-title .pronunciation {
-  color: var(--text-muted);
-  font-size: 0.7em;
-  font-weight: normal;
-  margin-left: 6px;
-}
 
 .difficulty-badge {
   padding: 4px 8px;
@@ -326,32 +349,85 @@
   color: white;
 }
 
-.word-content {
-  margin-bottom: 15px;
+
+/* 체크박스 - 첫 번째 컬럼 */
+.word-checkbox {
+  justify-self: center;
+  transform: scale(1.2);
+}
+
+/* 단어 정보 - 두 번째 컬럼 (확장) */
+.word-info-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.word-title-with-pronunciation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.word-title {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+.word-title .pronunciation {
+  color: var(--text-muted);
+  font-size: 0.8em;
+  font-weight: normal;
+  margin-left: 8px;
+}
+
+/* 난이도 배지 - 세 번째 컬럼 */
+.difficulty-column {
+  justify-self: center;
+}
+
+/* 뜻 - 네 번째 컬럼 */
+.meanings-column {
+  min-width: 200px;
+  max-width: 300px;
 }
 
 .word-meanings {
-  margin: 5px 0;
+  margin: 0;
   color: var(--text-normal);
   word-wrap: break-word;
   overflow-wrap: break-word;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+/* 복습 정보 - 다섯 번째 컬럼 */
+.review-info-column {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+  text-align: center;
 }
 
 .review-count,
 .last-reviewed {
-  margin: 3px 0;
+  margin: 0;
   font-size: 0.9em;
   color: var(--text-muted);
 }
 
-/* 단어 액션 버튼들 - 오른쪽 정렬 */
+/* 단어 액션 버튼들 - 여섯 번째 컬럼 (마지막) */
 .word-actions {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
   min-width: 0;
   justify-content: flex-end;
-  margin-left: auto;
 }
 
 .action-button {
@@ -381,11 +457,6 @@
   background-color: #d32f2f;
 }
 
-/* 체크박스 */
-.word-checkbox {
-  margin-right: 10px;
-  transform: scale(1.2);
-}
 
 /* 검색 섹션 */
 .search-section {
@@ -557,9 +628,9 @@
 
 .english-example {
   margin: 0 0 10px 0;
-  font-style: italic;
+  font-style: normal;
   color: var(--text-normal);
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.5;
   font-weight: 500;
 }
@@ -580,8 +651,9 @@
   border-radius: 8px;
   margin-bottom: 10px;
   border-left: 4px solid var(--text-accent);
-  font-style: italic;
+  font-style: normal;
   color: var(--text-normal);
+  font-size: 18px;
 }
 
 /* 정답 확인 버튼 */
@@ -658,14 +730,33 @@
 }
 
 .review-button {
-  padding: 12px 24px;
+  padding: 12px 20px;
   border: none;
   border-radius: 8px;
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
-  min-width: 100px;
+  min-width: 120px;
+  min-height: 60px;
+}
+
+.review-button .button-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.review-button .button-label {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.review-button .button-interval {
+  font-size: 12px;
+  font-weight: normal;
+  opacity: 0.8;
 }
 
 .hard-button {
@@ -1048,7 +1139,7 @@
   }
   
   .vocabulary-learning-modal {
-    width: clamp(380px, 90vw, 500px);
+    width: clamp(494px, 117vw, 650px);
   }
 }
 
@@ -1078,16 +1169,51 @@
     align-items: stretch;
   }
   
+  .word-list-header {
+    display: none;
+  }
+  
+  .word-item {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    text-align: left;
+  }
+  
   .word-actions {
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: center;
+  }
+  
+  .word-checkbox {
+    justify-self: start;
+  }
+  
+  .difficulty-column,
+  .review-info-column {
+    text-align: left;
   }
   
   .stats-grid {
     grid-template-columns: 1fr;
   }
   
-  .review-buttons {
+  .review-buttons-section {
     flex-direction: column;
+    align-items: center;
+  }
+  
+  .review-button {
+    width: 100%;
+    max-width: 280px;
+    min-height: 50px;
+  }
+  
+  .review-button .button-label {
+    font-size: 15px;
+  }
+  
+  .review-button .button-interval {
+    font-size: 11px;
   }
   
   .button-section {
@@ -1095,7 +1221,7 @@
   }
   
   .vocabulary-learning-modal {
-    width: clamp(360px, 92vw, 480px);
+    width: clamp(468px, 119vw, 624px);
     max-height: 95vh;
   }
   
@@ -1120,7 +1246,7 @@
 
 @media (max-width: 480px) {
   .vocabulary-learning-modal {
-    width: clamp(320px, 95vw, 420px);
+    width: clamp(416px, 123vw, 546px);
     max-height: 95vh;
     border-radius: 8px;
     margin: 2vh auto;
@@ -1187,9 +1313,9 @@
 
 .english-example {
   margin: 0 0 10px 0;
-  font-style: italic;
+  font-style: normal;
   color: var(--text-normal);
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.5;
   font-weight: 500;
 }
@@ -1210,8 +1336,9 @@
   border-radius: 8px;
   margin-bottom: 10px;
   border-left: 4px solid var(--text-accent);
-  font-style: italic;
+  font-style: normal;
   color: var(--text-normal);
+  font-size: 18px;
 }
 
 /* 확인 모달 스타일 */

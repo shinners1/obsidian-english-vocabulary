@@ -1,73 +1,179 @@
 # English Vocabulary Learning Plugin for Obsidian
 
-영어 단어 학습을 위한 Obsidian 플러그인입니다. Anki와 같은 플래시카드 형태로 영어 단어를 학습할 수 있습니다.
+An AI-powered English vocabulary learning plugin for Obsidian that uses spaced repetition and flashcards to help you memorize English words effectively.
 
-## 기능
+## ✨ Features
 
-### 1. 플래시카드 형태의 학습
-- 영단어를 입력하면 카드 형태로 학습할 수 있습니다
-- 첫 번째 화면에는 영단어, 유사한 단어들, 예문들이 표시됩니다
+### 🧠 Smart Learning System
+- **SM-2 Spaced Repetition Algorithm**: Scientifically proven method for long-term retention
+- **AI-Powered Content**: Automatic example sentences and definitions using LLM services (OpenAI, Anthropic, Google AI)
+- **3-Level Assessment**: Hard/Good/Easy evaluation system for personalized learning curves
 
-### 2. 단계별 학습
-- **첫 번째 화면**: 영단어, 유사한 단어들, 예문들, '정답 확인하기' 버튼
-- **두 번째 화면**: 한글 뜻들, 예문들의 한글 번역
+### 🎯 Learning Tools
+- **Flashcard Interface**: Anki-style learning experience with two-stage reveal
+- **TTS Pronunciation**: Multiple text-to-speech providers for correct pronunciation
+- **Multiple Vocabulary Books**: Organize words by topics, difficulty, or personal preference
+- **Progress Tracking**: Detailed statistics including streak days, success rate, and learning analytics
 
-### 3. 복습 시스템
-- '어려움', '좋음', '쉬움' 버튼으로 학습 난이도를 평가
-- 학습 기록을 추적하여 효율적인 복습 가능
+### 🔧 Technical Features
+- **Markdown-based Storage**: All vocabulary data stored as readable markdown files
+- **Clean Architecture**: Well-structured, maintainable codebase following SOLID principles
+- **Load Balancing**: Distributes review sessions evenly to prevent overwhelming study days
+- **Secure API Storage**: All API keys are encrypted before storage
 
-## 사용법
+## 🚀 Quick Start
 
-1. **플러그인 활성화**: Obsidian 설정에서 이 플러그인을 활성화합니다
-2. **학습 시작**: 
-   - 리본 아이콘 클릭 또는
-   - 명령 팔레트에서 "영어 단어 학습 시작" 실행
-3. **단어 입력**: 학습하고 싶은 영단어를 입력합니다
-4. **학습 진행**: 
-   - 첫 번째 화면에서 단어와 예문을 확인
-   - '정답 확인하기' 버튼을 클릭하여 뜻 확인
-   - 복습 버튼으로 난이도 평가
+1. Install the plugin from Obsidian Community Plugins
+2. Configure your AI API key in settings (optional but recommended)
+3. Create your first vocabulary book or use the default one
+4. Add words manually or let AI generate content
+5. Start learning with the flashcard system!
 
-## 지원하는 단어
+## 📖 Usage Guide
 
-현재 다음 단어들의 샘플 데이터가 포함되어 있습니다:
-- beautiful (아름다운)
-- happy (행복한)
-- learn (배우다)
+### Basic Learning Flow
+1. **Add Words**: Click "Add Words" to add new vocabulary to your books
+2. **Study Mode**: Start learning session to see new words
+3. **Review Mode**: The SM-2 algorithm automatically schedules reviews
+4. **Track Progress**: Monitor your learning statistics and streaks
 
-다른 단어들은 기본 템플릿으로 표시됩니다.
+### Available Commands
+- `English Vocabulary: Start Learning` - Begin a flashcard learning session
+- `English Vocabulary: View Vocabulary Books` - Manage your word collections
+- `English Vocabulary: Add Words` - Add new vocabulary to current book
+- `English Vocabulary: Review Statistics` - View your learning progress
+- `English Vocabulary: Settings` - Configure plugin options
 
-## 설치
+### Learning Interface
+1. **First Stage**: Shows the English word, pronunciation, similar words, and example sentences
+2. **Second Stage**: Reveals meanings in your native language and translated examples
+3. **Assessment**: Rate your recall as Hard/Good/Easy to optimize future reviews
 
-1. 이 저장소를 클론합니다
-2. `npm install` 또는 `pnpm install`로 의존성을 설치합니다
-3. `npm run build`로 플러그인을 빌드합니다
-4. Obsidian의 플러그인 폴더에 복사합니다
+## ⚙️ Configuration
 
-## 개발
+### AI Integration (Optional but Recommended)
+Configure AI services for enhanced learning experience:
 
-```bash
-# 개발 모드 실행
-npm run dev
+- **OpenAI**: GPT models for high-quality content generation
+- **Anthropic Claude**: Advanced AI with nuanced understanding
+- **Google AI**: Gemini models for diverse content
 
-# 프로덕션 빌드
-npm run build
+### TTS Settings
+- **Voice Selection**: Choose from available system voices
+- **Speech Rate**: Adjust pronunciation speed (0.5 - 2.0)
+- **Provider Options**: 
+  - Browser TTS (built-in)
+  - Google Cloud TTS (requires API)
+  - Chatterbox TTS
+
+### Learning Settings
+- **Daily Goal**: Set target words to learn per day
+- **Review Batch Size**: Number of cards per review session
+- **Auto-play Audio**: Enable automatic pronunciation
+
+## 🧪 Spaced Repetition Algorithm
+
+This plugin implements the **SM-2 (SuperMemo-2) algorithm**, the gold standard for spaced repetition:
+
+### Mathematical Foundation
+- **E-Factor Update**: `EF_new = EF_old + (0.1 - (3-q)×(0.08 + (3-q)×0.02))`
+- **Review Intervals**: 
+  - First review: 1 day
+  - Second review: 6 days
+  - Subsequent: `I_n = I_(n-1) × EF_new`
+- **Quality Scores**: 
+  - Hard (1): Difficult recall, resets interval
+  - Good (2): Successful recall with effort
+  - Easy (3): Perfect recall
+
+### Load Balancing
+The plugin intelligently distributes reviews across days to prevent overwhelming study sessions:
+- Short intervals (≤21 days): ±1 day fuzzing
+- Medium intervals (≤180 days): ±5% fuzzing
+- Long intervals (>180 days): ±2.5% fuzzing
+
+## 🏗️ Architecture
+
+Built with Clean Architecture principles for maintainability and extensibility:
+
+```
+src/
+├── core/               # Business logic & algorithms
+├── features/           # Feature modules
+├── infrastructure/     # External services
+└── shared/            # Common utilities
 ```
 
-## 향후 계획
+## 🔒 Privacy & Security
 
-- [X] LLM을 이용해 단어 예문 등 데이터 가져오는 기능
-- [X] 음성 발음 기능 추가 
-- [X] 단어장 기능
-- [X] 간격 반복 알고리즘 구현
-- [ ] 학습 통계 및 진행률 표시
+- **Local Storage**: All vocabulary data stored locally in your vault
+- **Encrypted API Keys**: Sensitive credentials are encrypted
+- **No Telemetry**: No usage data is collected or transmitted
+- **Open Source**: Full source code available for review
 
+## 📊 Data Format
 
-## 라이선스
+Vocabulary is stored in markdown files with frontmatter:
 
-MIT License
+```markdown
+---
+bookId: default
+name: "My Vocabulary Book"
+wordCount: 42
+---
 
-## 기여
+### word
 
-버그 리포트나 기능 제안은 이슈로 등록해 주세요. 풀 리퀘스트도 환영합니다! 
+**pronunciation:** /wɜːrd/
+**meanings:**
+- a unit of language
+- a promise or assurance
+
+**examples:**
+- Keep your word.
+- A word to the wise is sufficient.
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+### Development Setup
+```bash
+# Clone the repository
+git clone https://github.com/shinners1/obsidian-english-vocabulary
+
+# Install dependencies
+npm install
+
+# Build the plugin
+npm run build
+
+# Run in development mode
+npm run dev
+```
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+## 🙏 Acknowledgments
+
+- SM-2 Algorithm by Piotr Wozniak (SuperMemo)
+- Inspired by Anki's spaced repetition system
+- Built for the amazing Obsidian community
+- Special thanks to all contributors and testers
+
+## 📮 Support
+
+- **Issues**: [GitHub Issues](https://github.com/shinners1/obsidian-english-vocabulary/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/shinners1/obsidian-english-vocabulary/discussions)
+- **Email**: shinners1@github.com
+
+---
+
+If you find this plugin helpful, please consider:
+- ⭐ Starring the repository
+- 💝 [Sponsoring development](https://github.com/sponsors/shinners1)
+- 📢 Sharing with other English learners
 

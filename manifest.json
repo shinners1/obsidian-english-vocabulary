@@ -3,8 +3,9 @@
     "name": "English Vocabulary Learning",
     "version": "1.0.0",
     "minAppVersion": "1.2.8",
-    "description": "영어 단어 학습을 위한 플래시카드 플러그인입니다.",
+    "description": "AI-powered English vocabulary learning with spaced repetition algorithm. Features flashcards, TTS pronunciation, and SM-2 algorithm for optimal learning.",
     "author": "Shinners",
-    "authorUrl": "https://github.com/shinners1/obsidian-english-vocabulary",
-    "isDesktopOnly": false
+    "authorUrl": "https://github.com/shinners1",
+    "isDesktopOnly": false,
+    "fundingUrl": "https://github.com/sponsors/shinners1"
 } 

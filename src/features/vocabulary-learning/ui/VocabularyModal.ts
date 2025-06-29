@@ -2,6 +2,8 @@ import { Modal, App, Notice } from 'obsidian';
 import EnglishVocabularyPlugin from '../../../main';
 import { VocabularyCard } from '../../../VocabularyCard';
 import { TTSService } from '../../../infrastructure/tts/TTSService';
+import { SpacedRepetitionService, ReviewSession } from '../../../core/services/SpacedRepetitionService';
+import { ReviewResponse } from '../../../core/algorithms/SpacedRepetitionAlgorithm';
 
 export class VocabularyModal extends Modal {
     plugin: EnglishVocabularyPlugin;
@@ -10,6 +12,8 @@ export class VocabularyModal extends Modal {
     showAnswer = false;
     private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
     private ttsService: TTSService;
+    private spacedRepetitionService: SpacedRepetitionService;
+    private currentSession: ReviewSession | null = null;
 
     constructor(app: App, plugin: EnglishVocabularyPlugin) {
         super(app);
@@ -20,24 +24,32 @@ export class VocabularyModal extends Modal {
             playbackSpeed: plugin.settings.ttsPlaybackSpeed,
             autoPlay: plugin.settings.ttsAutoPlay
         });
+        this.spacedRepetitionService = new SpacedRepetitionService();
     }
 
     onOpen() {
         // 저장된 모든 단어 가져오기
-        this.cards = this.plugin.databaseManager.getAllWords();
+        const allCards = this.plugin.databaseManager.getAllWords();
+        
+        // Spaced Repetition: 복습이 필요한 카드들만 가져오기
+        this.cards = this.spacedRepetitionService.getCardsForReview(allCards);
         
         // 디버깅: 카드 데이터 확인
-        console.log('로드된 카드 수:', this.cards.length);
+        console.log('전체 카드 수:', allCards.length);
+        console.log('복습 대상 카드 수:', this.cards.length);
         if (this.cards.length > 0) {
-            console.log('첫 번째 카드 예문:', this.cards[0].examples);
+            console.log('첫 번째 복습 카드:', this.cards[0].word);
         }
         
         if (this.cards.length === 0) {
-            this.showNoWordsMessage();
+            this.showNoCardsForReview(allCards.length);
             return;
         }
 
-        // 단어 순서 섞기
+        // 복습 세션 시작
+        this.currentSession = this.spacedRepetitionService.startReviewSession(this.cards);
+        
+        // 단어 순서 섞기 (새 카드가 먼저 오도록 조정 가능)
         this.shuffleCards();
         
         this.currentCardIndex = 0;
@@ -84,6 +96,49 @@ export class VocabularyModal extends Modal {
         noWordsEl.createEl('p', { text: '단어장에 단어를 추가한 후 다시 시도해주세요.' });
         
         const closeButton = noWordsEl.createEl('button', { text: '닫기' });
+        closeButton.addClass('close-button');
+        closeButton.addEventListener('click', () => this.close());
+    }
+
+    private showNoCardsForReview(totalCards: number) {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass('vocabulary-learning-modal');
+
+        // 설정된 높이를 CSS 변수로 적용
+        contentEl.style.setProperty('--review-modal-height', `${this.plugin.settings.reviewModalHeight}vh`);
+
+        const noReviewEl = contentEl.createEl('div', { cls: 'no-review-message' });
+        noReviewEl.createEl('h2', { text: '🎉 오늘의 복습 완료!' });
+        
+        if (totalCards > 0) {
+            const stats = this.spacedRepetitionService.calculateStatistics(this.plugin.databaseManager.getAllWords());
+            noReviewEl.createEl('p', { 
+                text: `총 ${totalCards}개의 단어 중 오늘 복습할 단어가 없습니다.` 
+            });
+            
+            // 다음 복습 예정 정보
+            const nextDueCards = this.spacedRepetitionService.getCardsDueInDays(
+                this.plugin.databaseManager.getAllWords(), 
+                1
+            );
+            if (nextDueCards > 0) {
+                noReviewEl.createEl('p', { 
+                    text: `내일 복습 예정: ${nextDueCards}개 단어` 
+                });
+            }
+
+            // 학습 통계
+            const statsEl = noReviewEl.createEl('div', { cls: 'study-stats' });
+            statsEl.createEl('h3', { text: '학습 현황' });
+            statsEl.createEl('p', { text: `• 새 단어: ${stats.overall.newCards}개` });
+            statsEl.createEl('p', { text: `• 학습 중: ${stats.overall.learningCards}개` });
+            statsEl.createEl('p', { text: `• 완료: ${stats.overall.matureCards}개` });
+        } else {
+            noReviewEl.createEl('p', { text: '단어장에 단어를 추가한 후 다시 시도해주세요.' });
+        }
+        
+        const closeButton = noReviewEl.createEl('button', { text: '닫기' });
         closeButton.addClass('close-button');
         closeButton.addEventListener('click', () => this.close());
     }
@@ -158,12 +213,10 @@ export class VocabularyModal extends Modal {
         }
 
         // 예문들 (데이터베이스에서 가져온 예문 사용)
-        console.log('현재 카드 예문:', currentCard.examples);
         if (currentCard.examples && currentCard.examples.length > 0) {
             const examplesSection = cardContainer.createEl('div', { cls: 'examples-section' });
             examplesSection.createEl('h3', { text: '예문들:' });
             currentCard.examples.forEach((example, index) => {
-                console.log(`예문 ${index + 1}:`, example);
                 const exampleContainer = examplesSection.createEl('div', { cls: 'example-container' });
                 
                 // 영어 예문 (TTS 버튼 포함)
@@ -181,15 +234,14 @@ export class VocabularyModal extends Modal {
                     this.ttsService.speakExample(example.english);
                 });
                 
-                // 한글 번역
-                if (example.korean && example.korean.trim()) {
+                // 한글 번역 (정답 확인 후에만 표시)
+                if (this.showAnswer && example.korean && example.korean.trim()) {
                     const koreanExample = exampleContainer.createEl('p', { text: example.korean });
                     koreanExample.addClass('korean-example');
                 }
             });
         } else {
             // 예문이 없을 때 기본 예문 표시
-            console.log('예문이 없어서 기본 예문을 표시합니다.');
             const examplesSection = cardContainer.createEl('div', { cls: 'examples-section' });
             examplesSection.createEl('h3', { text: '예문들:' });
             const exampleContainer = examplesSection.createEl('div', { cls: 'example-container' });
@@ -210,10 +262,13 @@ export class VocabularyModal extends Modal {
                 this.ttsService.speakExample(`This is an example sentence with the word "${currentCard.word}".`);
             });
             
-            const koreanExample = exampleContainer.createEl('p', { 
-                text: `"${currentCard.word}"라는 단어가 포함된 예문입니다.` 
-            });
-            koreanExample.addClass('korean-example');
+            // 한글 번역 (정답 확인 후에만 표시)
+            if (this.showAnswer) {
+                const koreanExample = exampleContainer.createEl('p', { 
+                    text: `"${currentCard.word}"라는 단어가 포함된 예문입니다.` 
+                });
+                koreanExample.addClass('korean-example');
+            }
         }
 
         // 정답 확인 버튼
@@ -257,13 +312,46 @@ export class VocabularyModal extends Modal {
     private async handleReview(difficulty: 'easy' | 'good' | 'hard') {
         const currentCard = this.cards[this.currentCardIndex];
         
-        // 데이터베이스 업데이트
-        await this.plugin.databaseManager.updateWord(currentCard.word, difficulty);
+        if (!this.currentSession) {
+            console.error('No active review session');
+            return;
+        }
         
-        // 다음 카드로 이동
-        this.currentCardIndex++;
-        this.showAnswer = false;
-        this.showCard();
+        // Convert difficulty to ReviewResponse enum
+        const reviewResponse = difficulty as ReviewResponse;
+        
+        try {
+            // Process review using spaced repetition service
+            const result = this.spacedRepetitionService.processReview(currentCard, reviewResponse);
+            
+            // Update card in database with new schedule information
+            await this.plugin.databaseManager.updateWordWithSchedule(
+                result.updatedCard.word, 
+                difficulty,
+                result.updatedCard.scheduleInfo
+            );
+            
+            // Debug logging
+            console.log(`Card "${currentCard.word}" reviewed:`, {
+                response: reviewResponse,
+                newInterval: result.updatedCard.scheduleInfo?.interval,
+                newDueDate: result.updatedCard.scheduleInfo?.dueDate,
+                newEase: result.updatedCard.scheduleInfo?.ease
+            });
+            
+            // 다음 카드로 이동
+            this.currentCardIndex++;
+            this.showAnswer = false;
+            this.showCard();
+            
+        } catch (error) {
+            console.error('Error processing spaced repetition review:', error);
+            // Fallback to old method if spaced repetition fails
+            await this.plugin.databaseManager.updateWord(currentCard.word, difficulty);
+            this.currentCardIndex++;
+            this.showAnswer = false;
+            this.showCard();
+        }
     }
 
     private async handleDeleteCard() {

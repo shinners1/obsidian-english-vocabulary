@@ -7,6 +7,7 @@ import { VocabularyDatabaseManager } from './infrastructure/storage/VocabularyDa
 import { AddWordsModal } from './features/word-management/ui/AddWordsModal';
 import { AddBookModal } from './features/book-management/ui/AddBookModal';
 import { LLMService } from './infrastructure/llm/LLMService';
+import { encryptApiKey, decryptApiKey } from './utils';
 
 // DI Container
 import { DIContainer, container } from './shared/container/DIContainer';
@@ -15,6 +16,7 @@ import { ServiceRegistry } from './shared/container/ServiceRegistry';
 export default class EnglishVocabularyPlugin extends Plugin {
     settings: VocabularySettings;
     databaseManager: VocabularyDatabaseManager;
+    llmService: LLMService;
     private container: DIContainer;
 
     async onload() {
@@ -28,6 +30,9 @@ export default class EnglishVocabularyPlugin extends Plugin {
 
         // 데이터베이스 매니저 가져오기
         this.databaseManager = this.container.resolve<VocabularyDatabaseManager>('databaseManager');
+        
+        // LLM 서비스 초기화
+        this.llmService = new LLMService(this.settings);
         
         // MD 파일 기반 데이터 로드
         try {
@@ -91,10 +96,74 @@ export default class EnglishVocabularyPlugin extends Plugin {
             // 설정 데이터가 없는 경우 기본값 사용
             this.settings = Object.assign({}, DEFAULT_SETTINGS);
         }
+
+        // API 키 암호화 마이그레이션
+        await this.migrateApiKeys();
+    }
+
+    // API 키 암호화 마이그레이션
+    private async migrateApiKeys() {
+        let needsSave = false;
+
+        // llmApiKey가 평문으로 저장되어 있는지 확인하고 암호화
+        if (this.settings.llmApiKey && this.isPlainTextApiKey(this.settings.llmApiKey)) {
+            console.log('llmApiKey를 암호화합니다...');
+            const plainKey = this.settings.llmApiKey;
+            this.settings.llmApiKey = encryptApiKey(plainKey);
+            needsSave = true;
+        }
+
+        // 다른 API 키들도 평문인지 확인하고 암호화 (기존에 암호화되지 않은 경우)
+        if (this.settings.openaiApiKey && this.isPlainTextApiKey(this.settings.openaiApiKey)) {
+            console.log('openaiApiKey를 암호화합니다...');
+            const plainKey = this.settings.openaiApiKey;
+            this.settings.openaiApiKey = encryptApiKey(plainKey);
+            needsSave = true;
+        }
+
+        if (this.settings.anthropicApiKey && this.isPlainTextApiKey(this.settings.anthropicApiKey)) {
+            console.log('anthropicApiKey를 암호화합니다...');
+            const plainKey = this.settings.anthropicApiKey;
+            this.settings.anthropicApiKey = encryptApiKey(plainKey);
+            needsSave = true;
+        }
+
+        if (this.settings.googleApiKey && this.isPlainTextApiKey(this.settings.googleApiKey)) {
+            console.log('googleApiKey를 암호화합니다...');
+            const plainKey = this.settings.googleApiKey;
+            this.settings.googleApiKey = encryptApiKey(plainKey);
+            needsSave = true;
+        }
+
+        // 변경사항이 있으면 저장
+        if (needsSave) {
+            await this.saveSettings();
+            console.log('API 키 암호화 마이그레이션이 완료되었습니다.');
+        }
+    }
+
+    // API 키가 평문인지 확인하는 헬퍼 함수
+    private isPlainTextApiKey(apiKey: string): boolean {
+        if (!apiKey) return false;
+        
+        try {
+            // 암호화된 키를 복호화해보고 원본과 다르면 평문으로 간주
+            const decrypted = decryptApiKey(apiKey);
+            return decrypted === apiKey; // 복호화 결과가 원본과 같으면 평문
+        } catch (error) {
+            // 복호화 실패하면 평문일 가능성이 있음
+            // 일반적인 API 키 패턴 확인
+            return apiKey.startsWith('sk-') || apiKey.startsWith('sk-ant-') || apiKey.startsWith('AIza') || apiKey.length > 20;
+        }
     }
 
     async saveSettings() {
         await this.saveAllData();
+        
+        // LLM 서비스 업데이트
+        if (this.llmService) {
+            this.llmService = new LLMService(this.settings);
+        }
         
         // DI Container에 설정 업데이트
         if (this.container) {

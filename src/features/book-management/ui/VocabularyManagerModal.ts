@@ -25,6 +25,20 @@ export class VocabularyManagerModal extends Modal {
         this.selectedBookId = this.databaseManager.getCurrentBook()?.id || 'default';
     }
 
+    private hasValidApiKey(): boolean {
+        const provider = this.plugin.settings.llmProvider;
+        switch (provider) {
+            case 'openai':
+                return !!this.plugin.settings.openaiApiKey;
+            case 'anthropic':
+                return !!this.plugin.settings.anthropicApiKey;
+            case 'google':
+                return !!this.plugin.settings.googleApiKey;
+            default:
+                return false;
+        }
+    }
+
     async onOpen() {
         const { contentEl } = this;
         contentEl.empty();
@@ -155,15 +169,6 @@ export class VocabularyManagerModal extends Modal {
             this.close();
             new VocabularyModal(this.app, this.plugin).open();
         });
-        if (this.plugin.settings.enableAdvancedFeatures) {
-            const fetchAllButton = navEl.createEl('button', { 
-                text: '전체 단어 뜻 가져오기',
-                cls: 'nav-button'
-            });
-            fetchAllButton.addEventListener('click', () => {
-                this.showFetchAllMeaningsModal();
-            });
-        }
     }
 
     private showCurrentView() {
@@ -452,12 +457,9 @@ export class VocabularyManagerModal extends Modal {
         new FetchSelectedMeaningsModal(this.app, this.plugin, selectedWordList).open();
     }
 
-    private showFetchAllMeaningsModal() {
-        new FetchAllMeaningsModal(this.app, this.plugin).open();
-    }
 
     private async fetchSingleWordMeaning(word: VocabularyCard) {
-        if (!this.plugin.settings.apiKey) {
+        if (!this.hasValidApiKey()) {
             new Notice('LLM API 키가 설정되지 않았습니다. 설정에서 API 키를 입력해주세요.');
             return;
         }
@@ -541,231 +543,6 @@ export class VocabularyManagerModal extends Modal {
     }
 }
 
-class FetchAllMeaningsModal extends Modal {
-    plugin: EnglishVocabularyPlugin;
-    isProcessing = false;
-
-    constructor(app: App, plugin: EnglishVocabularyPlugin) {
-        super(app);
-        this.plugin = plugin;
-    }
-
-    onOpen() {
-        const { contentEl } = this;
-        contentEl.empty();
-        contentEl.addClass('fetch-all-meanings-modal');
-
-        contentEl.createEl('h2', { text: '전체 단어 뜻 가져오기', cls: 'modal-title' });
-        
-        contentEl.createEl('p', { 
-            text: '저장된 모든 단어의 상세 정보를 LLM API를 통해 새로 가져옵니다. (발음기호, 뜻, 예문, 번역)',
-            cls: 'modal-description'
-        });
-
-        const warningEl = contentEl.createEl('div', { cls: 'warning-section' });
-        warningEl.createEl('p', { 
-            text: '⚠️ 주의: 이 작업은 저장된 모든 단어의 기존 정보를 덮어씌웁니다.',
-            cls: 'warning-text'
-        });
-
-        const words = this.plugin.databaseManager.getAllWords();
-        if (words.length > 0) {
-            const previewEl = contentEl.createEl('div', { cls: 'words-preview' });
-            previewEl.createEl('h3', { text: '처리할 단어 목록:', cls: 'preview-title' });
-            
-            const wordsList = previewEl.createEl('div', { cls: 'words-list' });
-            words.slice(0, 10).forEach(word => {
-                wordsList.createEl('span', { text: word.word, cls: 'word-preview' });
-            });
-            
-            if (words.length > 10) {
-                wordsList.createEl('span', { 
-                    text: `... 외 ${words.length - 10}개`,
-                    cls: 'more-words'
-                });
-            }
-        }
-
-        const buttonSection = contentEl.createEl('div', { cls: 'button-section' });
-        
-        const fetchButton = buttonSection.createEl('button', { 
-            text: '전체 단어 뜻 가져오기',
-            cls: 'fetch-button primary'
-        });
-        fetchButton.addEventListener('click', () => this.fetchAllMeanings());
-
-        const cancelButton = buttonSection.createEl('button', { 
-            text: '취소',
-            cls: 'cancel-button'
-        });
-        cancelButton.addEventListener('click', () => this.close());
-
-        const progressSection = contentEl.createEl('div', { cls: 'progress-section' });
-        progressSection.style.display = 'none';
-        
-        const progressText = progressSection.createEl('p', { 
-            text: '단어 정보를 가져오는 중...',
-            cls: 'progress-text'
-        });
-        
-        const progressBar = progressSection.createEl('div', { cls: 'progress-bar' });
-        const progressFill = progressBar.createEl('div', { cls: 'progress-fill' });
-
-        const resultSection = contentEl.createEl('div', { cls: 'result-section' });
-        resultSection.style.display = 'none';
-    }
-
-    private async fetchAllMeanings() {
-        if (this.isProcessing) return;
-
-        const words = this.plugin.databaseManager.getAllWords();
-        if (words.length === 0) {
-            new Notice('저장된 단어가 없습니다.');
-            return;
-        }
-
-        if (!this.plugin.settings.apiKey) {
-            new Notice('LLM API 키가 설정되지 않았습니다. 설정에서 API 키를 입력해주세요.');
-            return;
-        }
-
-        this.isProcessing = true;
-        this.showProgress(words.length);
-
-        try {
-            this.updateProgress(0, words.length, '단어 정보를 가져오는 중...');
-
-            const wordList = words.map(w => w.word);
-            const llmResponse = await this.plugin.llmService.getMultipleWordDetails(wordList);
-            
-            if (llmResponse.success && llmResponse.data) {
-                this.updateProgress(words.length, words.length, '데이터베이스에 저장하는 중...');
-
-                const results = {
-                    success: [] as string[],
-                    failed: [] as string[]
-                };
-
-                for (const wordDetail of llmResponse.data) {
-                    try {
-                        const wordData = this.plugin.llmService.convertToWordData(wordDetail);
-                        
-                        const originalWord = words.find(w => w.word.toLowerCase() === wordDetail.word.toLowerCase());
-                        if (originalWord) {
-                            const updatedWord = {
-                                ...originalWord,
-                                meanings: wordData.meanings,
-                                examples: wordData.examples,
-                                similarWords: wordData.similarWords
-                            };
-                            
-                            await this.plugin.databaseManager.updateWordData(originalWord.word, updatedWord);
-                            results.success.push(originalWord.word);
-                        } else {
-                            results.failed.push(wordDetail.word);
-                        }
-                    } catch (error) {
-                        console.error(`단어 "${wordDetail.word}" 처리 실패:`, error);
-                        results.failed.push(wordDetail.word);
-                    }
-                }
-
-                this.hideProgress();
-                this.showResults(results);
-            } else {
-                this.hideProgress();
-                new Notice(`단어 정보 가져오기 실패: ${llmResponse.error}`);
-            }
-
-        } catch (error) {
-            console.error('전체 단어 정보 가져오기 실패:', error);
-            this.hideProgress();
-            new Notice('단어 정보를 가져오는 중 오류가 발생했습니다.');
-        } finally {
-            this.isProcessing = false;
-        }
-    }
-
-    private showProgress(totalWords: number) {
-        const progressSection = this.contentEl.querySelector('.progress-section') as HTMLElement;
-        const progressText = progressSection.querySelector('.progress-text') as HTMLElement;
-        
-        progressSection.style.display = 'block';
-        progressText.textContent = `단어 정보를 가져오는 중... (0/${totalWords})`;
-    }
-
-    private updateProgress(current: number, total: number, message: string) {
-        const progressSection = this.contentEl.querySelector('.progress-section') as HTMLElement;
-        if (!progressSection) return;
-        
-        const progressText = progressSection.querySelector('.progress-text') as HTMLElement;
-        const progressFill = progressSection.querySelector('.progress-fill') as HTMLElement;
-        
-        if (!progressText || !progressFill) return;
-        
-        const percentage = (current / total) * 100;
-        progressText.textContent = `${message} (${current}/${total})`;
-        progressFill.style.width = `${percentage}%`;
-    }
-
-    private hideProgress() {
-        const progressSection = this.contentEl.querySelector('.progress-section') as HTMLElement;
-        if (progressSection) {
-            progressSection.style.display = 'none';
-        }
-    }
-
-    private showResults(results: { success: string[]; failed: string[] }) {
-        const resultSection = this.contentEl.querySelector('.result-section') as HTMLElement;
-        resultSection.style.display = 'block';
-        resultSection.empty();
-
-        const summaryEl = resultSection.createEl('div', { cls: 'results-summary' });
-        
-        if (results.success.length > 0) {
-            const successEl = summaryEl.createEl('div', { cls: 'result-item success' });
-            successEl.createEl('span', { 
-                text: `✅ 성공: ${results.success.length}개`,
-                cls: 'result-count'
-            });
-            if (results.success.length <= 10) {
-                successEl.createEl('p', { 
-                    text: results.success.join(', '),
-                    cls: 'result-words'
-                });
-            }
-        }
-
-        if (results.failed.length > 0) {
-            const failedEl = summaryEl.createEl('div', { cls: 'result-item error' });
-            failedEl.createEl('span', { 
-                text: `❌ 실패: ${results.failed.length}개`,
-                cls: 'result-count'
-            });
-            if (results.failed.length <= 10) {
-                failedEl.createEl('p', { 
-                    text: results.failed.join(', '),
-                    cls: 'result-words'
-                });
-            }
-        }
-
-        const buttonSection = resultSection.createEl('div', { cls: 'result-buttons' });
-        
-        const closeButton = buttonSection.createEl('button', { text: '닫기', cls: 'close-button' });
-        closeButton.addEventListener('click', () => this.close());
-
-        if (results.success.length > 0) {
-            new Notice(`${results.success.length}개의 단어 정보를 성공적으로 업데이트했습니다!`);
-        }
-    }
-
-    onClose() {
-        this.isProcessing = false;
-        const { contentEl } = this;
-        contentEl.empty();
-    }
-}
 
 class VocabularyReviewModal extends Modal {
     plugin: EnglishVocabularyPlugin;

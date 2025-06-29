@@ -601,6 +601,17 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
         return results;
     }
 
+    // WordDetailData를 WordData로 변환하는 메서드
+    convertToWordData(wordDetail: WordDetailData): WordData {
+        return {
+            word: wordDetail.word,
+            pronunciation: wordDetail.pronunciation,
+            meanings: wordDetail.meanings,
+            similarWords: wordDetail.similarWords,
+            examples: wordDetail.examples
+        };
+    }
+
     // JSON 데이터 처리
     private processJsonData(jsonData: any[], originalWords: string[]): WordDetailData[] {
         const results: WordDetailData[] = [];

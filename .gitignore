@@ -1,11 +1,31 @@
-node_modules/
+# 로그 파일 제외
 *.log
 .DS_Store
 .env
-dist/
-build/
+
+# 압축 파일 제외
 *.tgz
 *.tar.gz
+
+# 데이터 파일 제외
+**/data.json
+
+# 커서, 클로드 파일 제외
+CURSOR.md
+CLAUDE.md
+*CURSOR*
+*CLAUDE*
+
+# 디렉토리 제외 (끝에 / 붙임)
+.cursor/
+.claude/
+node_modules/
+dist/
+build/
 .vscode/
 .idea/
-**/data.json
+obsidian-spaced-repetition
+obsidian-style-settings
+
+# build
+build

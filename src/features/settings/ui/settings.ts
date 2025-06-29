@@ -13,6 +13,7 @@ export interface VocabularySettings {
     openaiApiKey: string;
     anthropicApiKey: string;
     googleApiKey: string;
+    llmApiKey: string; // 범용 LLM API 키 (암호화됨)
     llmProvider: 'openai' | 'anthropic' | 'google';
     llmModel: string;
     enableAdvancedFeatures: boolean;
@@ -36,6 +37,7 @@ export const DEFAULT_SETTINGS: VocabularySettings = {
     openaiApiKey: '',
     anthropicApiKey: '',
     googleApiKey: '',
+    llmApiKey: '',
     llmProvider: 'openai',
     llmModel: 'gemini-1.0-pro-latest',
     enableAdvancedFeatures: false,
@@ -290,6 +292,27 @@ export class VocabularySettingTab extends PluginSettingTab {
                         }
                     });
             });
+
+        // 범용 LLM API 키
+        new Setting(containerEl)
+            .setName('범용 LLM API 키')
+            .setDesc('기타 LLM 서비스용 API 키를 입력하세요.')
+            .addText(text => {
+                const currentKey = this.plugin.settings.llmApiKey;
+                const decryptedKey = decryptApiKey(currentKey);
+                const maskedKey = maskApiKey(decryptedKey);
+                
+                return text
+                    .setPlaceholder('API 키를 입력하세요...')
+                    .setValue(maskedKey)
+                    .onChange(async (value) => {
+                        if (value !== maskedKey) {
+                            const encryptedKey = encryptApiKey(value);
+                            this.plugin.settings.llmApiKey = encryptedKey;
+                            await this.plugin.saveSettings();
+                        }
+                    });
+            });
     }
 
     private createAdvancedSettings(containerEl: HTMLElement) {
@@ -355,7 +378,7 @@ export class VocabularySettingTab extends PluginSettingTab {
     private createTTSSettings(containerEl: HTMLElement) {
         containerEl.createEl('h3', { text: 'TTS (음성 읽기) 설정' });
 
-        new Setting(containerEl)
+        const ttsToggleSetting = new Setting(containerEl)
             .setName('TTS 활성화')
             .setDesc('단어와 예문을 음성으로 읽어주는 기능을 활성화합니다.')
             .addToggle(toggle => toggle
@@ -363,26 +386,46 @@ export class VocabularySettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.ttsEnabled = value;
                     await this.plugin.saveSettings();
+                    // TTS 설정 UI 업데이트
+                    this.updateTTSSettingsVisibility();
                 }));
 
-        new Setting(containerEl)
+        const voiceSetting = new Setting(containerEl)
             .setName('음성 선택')
             .setDesc('사용할 음성을 선택하세요.')
-            .addDropdown(dropdown => dropdown
-                .addOption('en-US-AvaNeural', 'Ava (미국 영어)')
-                .addOption('en-US-JennyNeural', 'Jenny (미국 영어)')
-                .addOption('en-GB-SoniaNeural', 'Sonia (영국 영어)')
-                .addOption('en-GB-RyanNeural', 'Ryan (영국 영어)')
-                .addOption('en-AU-NatashaNeural', 'Natasha (호주 영어)')
-                .setValue(this.plugin.settings.ttsVoice)
-                .onChange(async (value) => {
-                    this.plugin.settings.ttsVoice = value;
-                    await this.plugin.saveSettings();
+            .setClass('tts-voice-setting')
+            .addDropdown(dropdown => {
+                // 실제 사용 가능한 영어 음성들을 동적으로 추가
+                this.populateVoiceDropdown(dropdown);
+                return dropdown
+                    .setValue(this.plugin.settings.ttsVoice)
+                    .onChange(async (value) => {
+                        this.plugin.settings.ttsVoice = value;
+                        await this.plugin.saveSettings();
+                    });
+            })
+            .addButton(button => button
+                .setButtonText('미리듣기')
+                .setTooltip('선택한 음성으로 샘플 텍스트를 재생합니다')
+                .onClick(async () => {
+                    button.setButtonText('재생 중...');
+                    button.setDisabled(true);
+                    
+                    try {
+                        await this.playVoicePreview();
+                    } catch (error) {
+                        console.error('음성 미리듣기 오류:', error);
+                        new Notice('음성 재생 중 오류가 발생했습니다.');
+                    } finally {
+                        button.setButtonText('미리듣기');
+                        button.setDisabled(false);
+                    }
                 }));
 
-        new Setting(containerEl)
+        const speedSetting = new Setting(containerEl)
             .setName('재생 속도')
             .setDesc('음성 재생 속도를 조절하세요. (0.5 = 느림, 1.0 = 보통, 2.0 = 빠름)')
+            .setClass('tts-speed-setting')
             .addSlider(slider => slider
                 .setLimits(0.5, 2.0, 0.1)
                 .setValue(this.plugin.settings.ttsPlaybackSpeed)
@@ -390,16 +433,268 @@ export class VocabularySettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.ttsPlaybackSpeed = value;
                     await this.plugin.saveSettings();
+                }))
+            .addButton(button => button
+                .setButtonText('속도 테스트')
+                .setTooltip('현재 설정된 속도로 샘플 음성을 재생합니다')
+                .onClick(async () => {
+                    button.setButtonText('재생 중...');
+                    button.setDisabled(true);
+                    
+                    try {
+                        await this.playVoicePreview();
+                    } catch (error) {
+                        console.error('음성 속도 테스트 오류:', error);
+                        new Notice('음성 재생 중 오류가 발생했습니다.');
+                    } finally {
+                        button.setButtonText('속도 테스트');
+                        button.setDisabled(false);
+                    }
                 }));
 
-        new Setting(containerEl)
+        const autoPlaySetting = new Setting(containerEl)
             .setName('자동 재생')
             .setDesc('단어 카드가 표시될 때 자동으로 단어를 읽어줍니다.')
+            .setClass('tts-autoplay-setting')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.ttsAutoPlay)
                 .onChange(async (value) => {
                     this.plugin.settings.ttsAutoPlay = value;
                     await this.plugin.saveSettings();
                 }));
+        
+        // 초기 상태 설정
+        this.updateTTSSettingsVisibility();
+    }
+
+    private populateVoiceDropdown(dropdown: any): void {
+        // 기본 옵션들 (Edge TTS와 유사한 Neural 음성들)
+        const defaultOptions = [
+            { value: 'en-US-AvaNeural', name: 'Ava (미국 영어)' },
+            { value: 'en-US-JennyNeural', name: 'Jenny (미국 영어)' },
+            { value: 'en-GB-SoniaNeural', name: 'Sonia (영국 영어)' },
+            { value: 'en-GB-RyanNeural', name: 'Ryan (영국 영어)' },
+            { value: 'en-AU-NatashaNeural', name: 'Natasha (호주 영어)' }
+        ];
+
+        // 기본 옵션들 추가
+        defaultOptions.forEach(option => {
+            dropdown.addOption(option.value, option.name);
+        });
+
+        // 실제 브라우저에서 사용 가능한 영어 음성들 추가
+        try {
+            const voices = speechSynthesis.getVoices();
+            const englishVoices = voices.filter(voice => 
+                voice.lang.startsWith('en-') && 
+                !voice.lang.includes('ko') &&
+                !defaultOptions.some(opt => opt.value === voice.name)
+            );
+
+            if (englishVoices.length > 0) {
+                // 구분선 추가
+                dropdown.addOption('---', '--- 시스템 음성 ---');
+                
+                englishVoices.forEach(voice => {
+                    const displayName = `${voice.name} (${voice.lang})`;
+                    dropdown.addOption(voice.name, displayName);
+                });
+            }
+        } catch (error) {
+            console.warn('음성 목록을 가져오는 중 오류:', error);
+        }
+    }
+
+    private updateTTSSettingsVisibility(): void {
+        const isEnabled = this.plugin.settings.ttsEnabled;
+        
+        // TTS 관련 설정들의 표시/숨김 처리
+        const ttsSettings = this.containerEl.querySelectorAll('.tts-voice-setting, .tts-speed-setting, .tts-autoplay-setting');
+        ttsSettings.forEach(setting => {
+            const element = setting as HTMLElement;
+            if (isEnabled) {
+                element.style.display = '';
+                element.style.opacity = '1';
+            } else {
+                element.style.opacity = '0.5';
+                // 완전히 숨기지 않고 비활성화 상태로 표시
+                const buttons = element.querySelectorAll('button');
+                const dropdowns = element.querySelectorAll('select');
+                const sliders = element.querySelectorAll('input[type="range"]');
+                const toggles = element.querySelectorAll('input[type="checkbox"]');
+                
+                buttons.forEach(btn => (btn as HTMLButtonElement).disabled = true);
+                dropdowns.forEach(dd => (dd as HTMLSelectElement).disabled = true);
+                sliders.forEach(slider => (slider as HTMLInputElement).disabled = true);
+                toggles.forEach(toggle => (toggle as HTMLInputElement).disabled = true);
+            }
+        });
+        
+        // 활성화 상태일 때 모든 컨트롤 재활성화
+        if (isEnabled) {
+            const ttsSettings = this.containerEl.querySelectorAll('.tts-voice-setting, .tts-speed-setting, .tts-autoplay-setting');
+            ttsSettings.forEach(setting => {
+                const element = setting as HTMLElement;
+                const buttons = element.querySelectorAll('button');
+                const dropdowns = element.querySelectorAll('select');
+                const sliders = element.querySelectorAll('input[type="range"]');
+                const toggles = element.querySelectorAll('input[type="checkbox"]');
+                
+                buttons.forEach(btn => (btn as HTMLButtonElement).disabled = false);
+                dropdowns.forEach(dd => (dd as HTMLSelectElement).disabled = false);
+                sliders.forEach(slider => (slider as HTMLInputElement).disabled = false);
+                toggles.forEach(toggle => (toggle as HTMLInputElement).disabled = false);
+            });
+        }
+    }
+
+    private async playVoicePreview(): Promise<void> {
+        return new Promise(async (resolve, reject) => {
+            try {
+                // Web Speech API 지원 확인
+                if (!window.speechSynthesis) {
+                    reject(new Error('이 브라우저는 음성 합성을 지원하지 않습니다.'));
+                    return;
+                }
+
+                // 현재 재생 중인 음성이 있으면 중지
+                if (speechSynthesis.speaking) {
+                    speechSynthesis.cancel();
+                }
+
+                // 음성 목록 로딩 대기 (TTSService와 동일한 방식)
+                await this.ensureVoicesLoadedForPreview();
+
+                // 샘플 텍스트 정의
+                const sampleTexts = [
+                    'Hello, this is a sample voice preview.',
+                    'Welcome to English vocabulary learning.',
+                    'This voice will help you learn pronunciation.',
+                    'Beautiful words make beautiful sentences.'
+                ];
+                
+                const randomText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
+
+                // 음성 합성 설정
+                const utterance = new SpeechSynthesisUtterance(randomText);
+                
+                // TTSService와 동일한 영어 음성 선택 로직 사용
+                const selectedVoice = this.selectEnglishVoiceForPreview();
+                
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice;
+                    // voice 설정이 우선되므로 lang도 voice에 맞춰 설정
+                    utterance.lang = selectedVoice.lang;
+                    console.log(`Settings Preview Voice: ${selectedVoice.name} (${selectedVoice.lang})`);
+                } else {
+                    // 폴백: 명시적으로 영어 언어 설정
+                    utterance.lang = 'en-US';
+                    console.log('Settings Preview: No specific voice found, using en-US language');
+                }
+                
+                utterance.rate = this.plugin.settings.ttsPlaybackSpeed;
+                utterance.volume = 1.0;
+
+                // 이벤트 핸들러 설정
+                utterance.onend = () => {
+                    resolve();
+                };
+
+                utterance.onerror = (event) => {
+                    reject(new Error(`음성 재생 오류: ${event.error}`));
+                };
+
+                // 음성 재생
+                speechSynthesis.speak(utterance);
+
+                // 타임아웃 설정 (10초)
+                setTimeout(() => {
+                    if (speechSynthesis.speaking) {
+                        speechSynthesis.cancel();
+                        reject(new Error('음성 재생 타임아웃'));
+                    }
+                }, 10000);
+
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    private async ensureVoicesLoadedForPreview(): Promise<void> {
+        return new Promise((resolve) => {
+            const voices = speechSynthesis.getVoices();
+            if (voices.length > 0) {
+                resolve();
+                return;
+            }
+
+            const handleVoicesChanged = () => {
+                speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+                resolve();
+            };
+
+            speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+            
+            // 타임아웃 설정 (2초)
+            setTimeout(() => {
+                speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+                resolve();
+            }, 2000);
+        });
+    }
+
+    private selectEnglishVoiceForPreview(): SpeechSynthesisVoice | null {
+        const voices = speechSynthesis.getVoices();
+        
+        // 명시적 음성 이름 우선 매칭
+        if (this.plugin.settings.ttsVoice) {
+            const exactMatch = voices.find(voice => voice.name === this.plugin.settings.ttsVoice);
+            if (exactMatch) {
+                return exactMatch;
+            }
+        }
+
+        // 영어 음성만 필터링 (한국어 제외)
+        const englishVoices = voices.filter(voice => 
+            voice.lang.startsWith('en-') && !voice.lang.includes('ko')
+        );
+
+        if (englishVoices.length === 0) {
+            console.warn('Settings Preview: No English voices found');
+            return null;
+        }
+
+        // 우선순위 기반 음성 선택
+        const preferredVoices = [
+            'Microsoft Ava - English (United States)',
+            'Microsoft Jenny - English (United States)', 
+            'Microsoft Aria - English (United States)',
+            'Microsoft Guy - English (United States)',
+            'Microsoft Mark - English (United States)',
+            'Google US English',
+            'en-US-AvaNeural',
+            'en-US-JennyNeural',
+            'en-US-AriaNeural'
+        ];
+
+        // 우선순위 음성 찾기
+        for (const preferredName of preferredVoices) {
+            const voice = englishVoices.find(v => 
+                v.name.includes(preferredName) || v.name === preferredName
+            );
+            if (voice) {
+                return voice;
+            }
+        }
+
+        // 미국 영어 우선
+        const usEnglish = englishVoices.find(voice => voice.lang === 'en-US');
+        if (usEnglish) {
+            return usEnglish;
+        }
+
+        // 그 외 영어 음성 중 첫 번째
+        return englishVoices[0];
     }
 } 

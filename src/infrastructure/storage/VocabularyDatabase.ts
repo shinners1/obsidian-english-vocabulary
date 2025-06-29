@@ -151,8 +151,18 @@ export class VocabularyDatabaseManager {
             content += `- 복습 횟수: ${word.reviewCount}\n`;
             content += `- 난이도: ${word.difficulty}\n`;
             content += `- 마지막 복습: ${word.lastReviewed || '없음'}\n`;
-            content += `- 추가일: ${word.addedDate}\n\n`;
-            content += '---\n\n';
+            content += `- 추가일: ${word.addedDate}\n`;
+            
+            // 스페이스드 리피티션 정보
+            if (word.scheduleInfo) {
+                content += `\n**스페이스드 리피티션:**\n`;
+                content += `- 다음 복습일: ${word.scheduleInfo.dueDate}\n`;
+                content += `- 복습 간격: ${word.scheduleInfo.interval}일\n`;
+                content += `- 용이도: ${word.scheduleInfo.ease}\n`;
+                content += `- 실패 횟수: ${word.scheduleInfo.lapseCount}\n`;
+            }
+            
+            content += '\n---\n\n';
         }
 
         try {
@@ -266,7 +276,7 @@ export class VocabularyDatabaseManager {
 
     // 개별 단어 섹션 파싱
     private parseWordSection(section: string, bookId: string): VocabularyCard | null {
-        const lines = section.split('\n').map(line => line.trim()).filter(line => line);
+        const lines = section.split('\n').filter(line => line.trim());
         if (lines.length === 0) return null;
         
         let word = '';
@@ -278,38 +288,43 @@ export class VocabularyDatabaseManager {
         let difficulty: 'easy' | 'good' | 'hard' = 'good';
         let lastReviewed: string | null = null;
         let addedDate = new Date().toISOString();
+        let scheduleInfo: any = undefined;
         
         let currentSection = '';
         let currentExample: { english?: string; korean?: string } = {};
         
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
+            const trimmedLine = line.trim();
             
             // 단어명 추출 (### 헤더)
-            if (line.startsWith('### ')) {
-                word = line.substring(4).trim();
+            if (trimmedLine.startsWith('### ')) {
+                word = trimmedLine.substring(4).trim();
                 continue;
             }
             
             // 섹션 구분
-            if (line.startsWith('**발음:**')) {
-                pronunciation = line.substring(7).trim();
+            if (trimmedLine.startsWith('**발음:**')) {
+                pronunciation = trimmedLine.substring(7).trim();
                 currentSection = 'pronunciation';
-            } else if (line.startsWith('**뜻:**')) {
+            } else if (trimmedLine.startsWith('**뜻:**')) {
                 currentSection = 'meanings';
-            } else if (line.startsWith('**유사한 단어:**')) {
-                const similarWordsText = line.substring(12).trim();
+            } else if (trimmedLine.startsWith('**유사한 단어:**')) {
+                const similarWordsText = trimmedLine.substring(12).trim();
                 similarWords.push(...similarWordsText.split(',').map(w => w.trim()));
                 currentSection = 'similar';
-            } else if (line.startsWith('**예문:**')) {
+            } else if (trimmedLine.startsWith('**예문:**')) {
                 currentSection = 'examples';
-            } else if (line.startsWith('**복습 정보:**')) {
+            } else if (trimmedLine.startsWith('**복습 정보:**')) {
                 currentSection = 'review';
-            } else if (currentSection === 'meanings' && line.startsWith('- ')) {
-                meanings.push(line.substring(2).trim());
+            } else if (trimmedLine.startsWith('**스페이스드 리피티션:**')) {
+                currentSection = 'spaced-repetition';
+            } else if (currentSection === 'meanings' && trimmedLine.startsWith('- ')) {
+                meanings.push(trimmedLine.substring(2).trim());
             } else if (currentSection === 'examples') {
+                // 들여쓰기를 고려한 예문 파싱
                 if (line.startsWith('- ') && !line.startsWith('  - ')) {
-                    // 영어 예문
+                    // 영어 예문 (들여쓰기 없음)
                     if (currentExample.english && currentExample.korean) {
                         examples.push({
                             english: currentExample.english,
@@ -318,22 +333,36 @@ export class VocabularyDatabaseManager {
                     }
                     currentExample = { english: line.substring(2).trim() };
                 } else if (line.startsWith('  - ')) {
-                    // 한글 번역
+                    // 한글 번역 (2칸 들여쓰기)
                     currentExample.korean = line.substring(4).trim();
                 }
             } else if (currentSection === 'review') {
-                if (line.startsWith('- 복습 횟수: ')) {
-                    reviewCount = parseInt(line.substring(9).trim()) || 0;
-                } else if (line.startsWith('- 난이도: ')) {
-                    const diff = line.substring(7).trim();
+                if (trimmedLine.startsWith('- 복습 횟수: ')) {
+                    reviewCount = parseInt(trimmedLine.substring(9).trim()) || 0;
+                } else if (trimmedLine.startsWith('- 난이도: ')) {
+                    const diff = trimmedLine.substring(7).trim();
                     if (diff === 'easy' || diff === 'good' || diff === 'hard') {
                         difficulty = diff;
                     }
-                } else if (line.startsWith('- 마지막 복습: ')) {
-                    const lastRev = line.substring(11).trim();
+                } else if (trimmedLine.startsWith('- 마지막 복습: ')) {
+                    const lastRev = trimmedLine.substring(11).trim();
                     lastReviewed = lastRev === '없음' ? null : lastRev;
-                } else if (line.startsWith('- 추가일: ')) {
-                    addedDate = line.substring(7).trim();
+                } else if (trimmedLine.startsWith('- 추가일: ')) {
+                    addedDate = trimmedLine.substring(7).trim();
+                }
+            } else if (currentSection === 'spaced-repetition') {
+                if (!scheduleInfo) {
+                    scheduleInfo = {};
+                }
+                if (trimmedLine.startsWith('- 다음 복습일: ')) {
+                    scheduleInfo.dueDate = trimmedLine.substring(10).trim();
+                } else if (trimmedLine.startsWith('- 복습 간격: ')) {
+                    const intervalText = trimmedLine.substring(8).trim();
+                    scheduleInfo.interval = parseInt(intervalText.replace('일', '')) || 1;
+                } else if (trimmedLine.startsWith('- 용이도: ')) {
+                    scheduleInfo.ease = parseInt(trimmedLine.substring(7).trim()) || 250;
+                } else if (trimmedLine.startsWith('- 실패 횟수: ')) {
+                    scheduleInfo.lapseCount = parseInt(trimmedLine.substring(9).trim()) || 0;
                 }
             }
         }
@@ -345,6 +374,8 @@ export class VocabularyDatabaseManager {
                 korean: currentExample.korean
             });
         }
+        
+
         
         if (!word) return null;
         
@@ -358,7 +389,8 @@ export class VocabularyDatabaseManager {
             difficulty,
             lastReviewed,
             addedDate,
-            bookId
+            bookId,
+            scheduleInfo
         };
     }
 
@@ -603,6 +635,43 @@ export class VocabularyDatabaseManager {
         wordData.reviewCount++;
         wordData.difficulty = difficulty;
         wordData.lastReviewed = new Date().toISOString();
+
+        // 통계 업데이트
+        this.statistics.totalReviews++;
+        this.updateStreak();
+
+        // 해당 book 파일 업데이트
+        const book = this.books.get(wordData.bookId);
+        if (book) {
+            book.updatedAt = new Date().toISOString();
+            await this.saveBookToFile(book);
+        }
+        
+        await this.saveSettings();
+        this.saveCallback();
+    }
+
+    // 단어 업데이트 (복습 결과 + 스페이스드 리피티션 정보)
+    async updateWordWithSchedule(
+        word: string, 
+        difficulty: 'easy' | 'good' | 'hard', 
+        scheduleInfo?: any
+    ): Promise<void> {
+        const wordKey = word.toLowerCase();
+        const wordData = this.words.get(wordKey);
+        
+        if (!wordData) {
+            throw new Error(`단어 "${word}"를 찾을 수 없습니다.`);
+        }
+
+        wordData.reviewCount++;
+        wordData.difficulty = difficulty;
+        wordData.lastReviewed = new Date().toISOString();
+        
+        // 스페이스드 리피티션 정보 업데이트
+        if (scheduleInfo) {
+            wordData.scheduleInfo = scheduleInfo;
+        }
 
         // 통계 업데이트
         this.statistics.totalReviews++;

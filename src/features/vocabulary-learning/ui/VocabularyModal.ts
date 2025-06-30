@@ -318,9 +318,18 @@ export class VocabularyModal extends Modal {
     private async handleReview(difficulty: 'easy' | 'good' | 'hard') {
         const currentCard = this.cards[this.currentCardIndex];
         
-        if (!this.currentSession) {
-            console.error('No active review session');
-            return;
+        // Check if SpacedRepetitionService has an active session
+        const activeSession = this.spacedRepetitionService.getCurrentSession();
+        if (!activeSession) {
+            console.error('No active review session in SpacedRepetitionService');
+            // Fallback: start a new session with remaining cards
+            const remainingCards = this.cards.slice(this.currentCardIndex);
+            if (remainingCards.length > 0) {
+                this.currentSession = this.spacedRepetitionService.startReviewSession(remainingCards);
+            } else {
+                console.error('No remaining cards to review');
+                return;
+            }
         }
         
         // Convert difficulty to ReviewResponse enum
@@ -336,7 +345,6 @@ export class VocabularyModal extends Modal {
                 difficulty,
                 result.updatedCard.scheduleInfo
             );
-            
             
             // 다음 카드로 이동
             this.currentCardIndex++;

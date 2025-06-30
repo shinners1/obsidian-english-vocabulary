@@ -41,11 +41,11 @@ export class CancellationTokenSource {
                 console.error('Error in cancellation callback:', error);
             }
         });
-        this._callbacks.clear();
+        this._callbacks.length = 0;
     }
 
     dispose(): void {
-        this._callbacks.clear();
+        this._callbacks.length = 0;
     }
 }
 

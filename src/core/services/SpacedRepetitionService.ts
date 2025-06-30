@@ -14,6 +14,7 @@ export interface ReviewSession {
     totalCards: number;
     completedCards: VocabularyCard[];
     currentCard?: VocabularyCard;
+    remainingCards?: VocabularyCard[];
 }
 
 export interface StudyStatistics {
@@ -93,7 +94,8 @@ export class SpacedRepetitionService {
             cardsReviewed: 0,
             totalCards: cardsToReview.length,
             completedCards: [],
-            currentCard: cardsToReview[0]
+            currentCard: cardsToReview[0],
+            remainingCards: cardsToReview // Add remaining cards to track progress
         };
 
         return this.currentSession;
@@ -138,10 +140,10 @@ export class SpacedRepetitionService {
         this.currentSession.cardsReviewed++;
         this.currentSession.completedCards.push(updatedCard);
 
-        // Get next card
-        const dueCards = this.getCardsForReview([card]); // This would be replaced with remaining cards
-        const nextCard = this.currentSession.cardsReviewed < this.currentSession.totalCards 
-            ? dueCards[this.currentSession.cardsReviewed] 
+        // Get next card from remaining cards
+        const remainingCards = this.currentSession.remainingCards || [];
+        const nextCard = this.currentSession.cardsReviewed < remainingCards.length 
+            ? remainingCards[this.currentSession.cardsReviewed] 
             : undefined;
 
         this.currentSession.currentCard = nextCard;

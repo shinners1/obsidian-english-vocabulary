@@ -1,5 +1,20 @@
 // API 키 암호화/복호화 유틸리티 (Web Crypto API 사용)
 
+// 평문 API 키인지 확인하는 헬퍼 함수
+function isPlainTextApiKey(apiKey: string): boolean {
+    if (!apiKey) return false;
+    
+    // 일반적인 API 키 패턴들
+    const apiKeyPatterns = [
+        /^sk-[a-zA-Z0-9]{32,}$/,           // OpenAI API 키
+        /^sk-ant-[a-zA-Z0-9-_]{95}$/,      // Anthropic API 키
+        /^AIza[a-zA-Z0-9-_]{35}$/,         // Google API 키
+        /^[a-zA-Z0-9-_]{20,}$/             // 일반적인 긴 토큰
+    ];
+    
+    return apiKeyPatterns.some(pattern => pattern.test(apiKey));
+}
+
 // 안전한 암호화를 위한 키 생성
 async function generateEncryptionKey(): Promise<CryptoKey> {
     // 사용자별 고유 정보를 기반으로 키 생성
@@ -39,9 +54,14 @@ async function generateEncryptionKey(): Promise<CryptoKey> {
     return derivedKey;
 }
 
-// Web Crypto API를 사용한 안전한 암호화
-export async function encryptApiKey(apiKey: string): Promise<string> {
+// Web Crypto API를 사용한 안전한 암호화 (Async)
+export async function encryptApiKeyAsync(apiKey: string): Promise<string> {
     if (!apiKey) return '';
+    
+    // 이미 암호화된 키인지 확인
+    if (!isPlainTextApiKey(apiKey)) {
+        return apiKey; // 이미 암호화된 것으로 간주하고 그대로 반환
+    }
     
     try {
         const key = await generateEncryptionKey();
@@ -66,12 +86,19 @@ export async function encryptApiKey(apiKey: string): Promise<string> {
         
         return btoa(String.fromCharCode(...combined));
     } catch (error) {
-        throw new Error('API 키 암호화 실패: ' + (error as Error).message);
+        console.error('비동기 암호화 실패:', (error as Error).message);
+        // 실패 시 동기 암호화로 폴백
+        return encryptApiKey(apiKey);
     }
 }
 
-export async function decryptApiKey(encryptedApiKey: string): Promise<string> {
+export async function decryptApiKeyAsync(encryptedApiKey: string): Promise<string> {
     if (!encryptedApiKey) return '';
+    
+    // 평문 API 키인지 확인 (일반적인 API 키 패턴)
+    if (isPlainTextApiKey(encryptedApiKey)) {
+        return encryptedApiKey; // 평문이면 그대로 반환
+    }
     
     try {
         const key = await generateEncryptionKey();
@@ -97,13 +124,20 @@ export async function decryptApiKey(encryptedApiKey: string): Promise<string> {
         const decoder = new TextDecoder();
         return decoder.decode(decrypted);
     } catch (error) {
-        throw new Error('API 키 복호화 실패: ' + (error as Error).message);
+        // atob 실패하거나 복호화 실패하면 평문일 가능성이 높음
+        console.warn('비동기 복호화 실패, 평문으로 간주:', (error as Error).message);
+        return encryptedApiKey;
     }
 }
 
-// 동기식 호환성을 위한 래퍼 함수들
-export function encryptApiKeySync(apiKey: string): string {
+// 동기식 호환성을 위한 래퍼 함수들 (Legacy)
+export function encryptApiKey(apiKey: string): string {
     if (!apiKey) return '';
+    
+    // 이미 암호화된 키인지 확인
+    if (!isPlainTextApiKey(apiKey)) {
+        return apiKey; // 이미 암호화된 것으로 간주하고 그대로 반환
+    }
     
     // 비동기 함수를 동기적으로 사용하기 위한 폴백
     // 실제로는 비동기 버전을 사용하는 것을 권장
@@ -122,8 +156,13 @@ export function encryptApiKeySync(apiKey: string): string {
     }
 }
 
-export function decryptApiKeySync(encryptedApiKey: string): string {
+export function decryptApiKey(encryptedApiKey: string): string {
     if (!encryptedApiKey) return '';
+    
+    // 평문 API 키인지 확인 (일반적인 API 키 패턴)
+    if (isPlainTextApiKey(encryptedApiKey)) {
+        return encryptedApiKey; // 평문이면 그대로 반환
+    }
     
     try {
         const key = 'obsidian-vocab-temp-key-2024';
@@ -135,16 +174,21 @@ export function decryptApiKeySync(encryptedApiKey: string): string {
         }
         return decrypted;
     } catch (error) {
-        console.error('동기 복호화 실패:', error);
-        return '';
+        // atob 실패하면 평문일 가능성이 높음
+        console.warn('복호화 실패, 평문으로 간주:', error.message);
+        return encryptedApiKey;
     }
 }
 
 // API 키를 마스킹하여 표시
-export function maskApiKey(apiKey: string): string {
-    if (!apiKey) return '';
+export function maskApiKey(apiKey: string | undefined | null): string {
+    // null, undefined, 빈 문자열 체크
+    if (!apiKey || typeof apiKey !== 'string') return '';
+    
+    // 문자열 길이가 8 이하인 경우
     if (apiKey.length <= 8) return '*'.repeat(apiKey.length);
     
+    // 정상적인 마스킹 처리
     return apiKey.substring(0, 4) + '*'.repeat(apiKey.length - 8) + apiKey.substring(apiKey.length - 4);
 }
 

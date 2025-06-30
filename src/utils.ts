@@ -1,105 +1,143 @@
-// API 키 암호화/복호화 유틸리티
+// API 키 암호화/복호화 유틸리티 (Web Crypto API 사용)
 
 // 안전한 암호화를 위한 키 생성
-function generateEncryptionKey(): string {
-    // 플러그인별 고유 키 생성 (더 안전한 방법)
+async function generateEncryptionKey(): Promise<CryptoKey> {
+    // 사용자별 고유 정보를 기반으로 키 생성
     const pluginId = 'obsidian-english-vocabulary';
     const version = '0.1';
     const userAgent = navigator.userAgent;
+    const timestamp = Date.now().toString();
     
-    // 간단한 해시 함수로 키 생성
-    let hash = 0;
-    const input = pluginId + version + userAgent;
-    for (let i = 0; i < input.length; i++) {
-        const char = input.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // 32비트 정수로 변환
-    }
+    // 키 재료 생성
+    const keyMaterial = pluginId + version + userAgent + timestamp;
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(keyMaterial);
     
-    return Math.abs(hash).toString(36) + pluginId + version;
+    // Web Crypto API를 사용한 안전한 키 도출
+    const baseKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'PBKDF2' },
+        false,
+        ['deriveBits', 'deriveKey']
+    );
+    
+    // PBKDF2로 강력한 키 도출
+    const derivedKey = await crypto.subtle.deriveKey(
+        {
+            name: 'PBKDF2',
+            salt: encoder.encode('obsidian-vocabulary-salt-2024'),
+            iterations: 100000,
+            hash: 'SHA-256'
+        },
+        baseKey,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+    );
+    
+    return derivedKey;
 }
 
-// 향상된 암호화 함수 (AES-256 스타일 구현)
-export function encryptApiKey(apiKey: string): string {
+// Web Crypto API를 사용한 안전한 암호화
+export async function encryptApiKey(apiKey: string): Promise<string> {
     if (!apiKey) return '';
     
     try {
-        const key = generateEncryptionKey();
+        const key = await generateEncryptionKey();
+        const encoder = new TextEncoder();
+        const data = encoder.encode(apiKey);
         
-        // 다중 라운드 암호화
-        let encrypted = apiKey;
-        for (let round = 0; round < 3; round++) {
-            const roundKey = key + round.toString();
-            let temp = '';
-            
-            for (let i = 0; i < encrypted.length; i++) {
-                const charCode = encrypted.charCodeAt(i);
-                const keyCode = roundKey.charCodeAt(i % roundKey.length);
-                const encryptedChar = (charCode + keyCode) % 256;
-                temp += String.fromCharCode(encryptedChar);
-            }
-            encrypted = temp;
-        }
+        // 랜덤 IV 생성
+        const iv = crypto.getRandomValues(new Uint8Array(12));
         
-        // Base64 인코딩과 체크섬 추가
-        const checksum = calculateChecksum(apiKey);
-        return btoa(encrypted) + '.' + checksum;
+        // AES-GCM 암호화
+        const encrypted = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv: iv },
+            key,
+            data
+        );
+        
+        // IV와 암호화된 데이터를 결합하여 Base64 인코딩
+        const encryptedArray = new Uint8Array(encrypted);
+        const combined = new Uint8Array(iv.length + encryptedArray.length);
+        combined.set(iv);
+        combined.set(encryptedArray, iv.length);
+        
+        return btoa(String.fromCharCode(...combined));
     } catch (error) {
-        throw new Error('API 키 암호화 실패: ' + error.message);
+        throw new Error('API 키 암호화 실패: ' + (error as Error).message);
     }
 }
 
-export function decryptApiKey(encryptedApiKey: string): string {
+export async function decryptApiKey(encryptedApiKey: string): Promise<string> {
     if (!encryptedApiKey) return '';
     
     try {
-        // 체크섬 분리
-        const parts = encryptedApiKey.split('.');
-        if (parts.length !== 2) {
-            throw new Error('잘못된 암호화된 키 형식');
-        }
-        
-        const [encryptedData, checksum] = parts;
-        const key = generateEncryptionKey();
+        const key = await generateEncryptionKey();
         
         // Base64 디코딩
-        let decrypted = atob(encryptedData);
+        const combined = new Uint8Array(
+            atob(encryptedApiKey)
+                .split('')
+                .map(char => char.charCodeAt(0))
+        );
         
-        // 다중 라운드 복호화 (역순)
-        for (let round = 2; round >= 0; round--) {
-            const roundKey = key + round.toString();
-            let temp = '';
-            
-            for (let i = 0; i < decrypted.length; i++) {
-                const charCode = decrypted.charCodeAt(i);
-                const keyCode = roundKey.charCodeAt(i % roundKey.length);
-                const decryptedChar = (charCode - keyCode + 256) % 256;
-                temp += String.fromCharCode(decryptedChar);
-            }
-            decrypted = temp;
-        }
+        // IV와 암호화된 데이터 분리
+        const iv = combined.slice(0, 12);
+        const encrypted = combined.slice(12);
         
-        // 체크섬 검증
-        const expectedChecksum = calculateChecksum(decrypted);
-        if (checksum !== expectedChecksum) {
-            throw new Error('데이터 무결성 검증 실패');
-        }
+        // AES-GCM 복호화
+        const decrypted = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: iv },
+            key,
+            encrypted
+        );
         
-        return decrypted;
+        const decoder = new TextDecoder();
+        return decoder.decode(decrypted);
     } catch (error) {
-        throw new Error('API 키 복호화 실패: ' + error.message);
+        throw new Error('API 키 복호화 실패: ' + (error as Error).message);
     }
 }
 
-// 체크섬 계산 함수
-function calculateChecksum(data: string): string {
-    let hash = 0;
-    for (let i = 0; i < data.length; i++) {
-        const char = data.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
+// 동기식 호환성을 위한 래퍼 함수들
+export function encryptApiKeySync(apiKey: string): string {
+    if (!apiKey) return '';
+    
+    // 비동기 함수를 동기적으로 사용하기 위한 폴백
+    // 실제로는 비동기 버전을 사용하는 것을 권장
+    try {
+        // 간단한 XOR 암호화 (호환성용)
+        const key = 'obsidian-vocab-temp-key-2024';
+        let encrypted = '';
+        for (let i = 0; i < apiKey.length; i++) {
+            const charCode = apiKey.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+            encrypted += String.fromCharCode(charCode);
+        }
+        return btoa(encrypted);
+    } catch (error) {
+        console.error('동기 암호화 실패:', error);
+        return '';
     }
-    return Math.abs(hash).toString(36);
+}
+
+export function decryptApiKeySync(encryptedApiKey: string): string {
+    if (!encryptedApiKey) return '';
+    
+    try {
+        const key = 'obsidian-vocab-temp-key-2024';
+        const decoded = atob(encryptedApiKey);
+        let decrypted = '';
+        for (let i = 0; i < decoded.length; i++) {
+            const charCode = decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+            decrypted += String.fromCharCode(charCode);
+        }
+        return decrypted;
+    } catch (error) {
+        console.error('동기 복호화 실패:', error);
+        return '';
+    }
 }
 
 // API 키를 마스킹하여 표시

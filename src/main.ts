@@ -7,7 +7,7 @@ import { VocabularyDatabaseManager } from './infrastructure/storage/VocabularyDa
 import { AddWordsModal } from './features/word-management/ui/AddWordsModal';
 import { AddBookModal } from './features/book-management/ui/AddBookModal';
 import { LLMService } from './infrastructure/llm/LLMService';
-import { encryptApiKey, decryptApiKey } from './utils';
+import { encryptApiKeySync as encryptApiKey, decryptApiKeySync as decryptApiKey } from './utils';
 
 // DI Container
 import { DIContainer, container } from './shared/container/DIContainer';

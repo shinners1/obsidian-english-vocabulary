@@ -58,7 +58,7 @@ export const DEFAULT_SETTINGS: VocabularySettings = {
     ttsPlaybackSpeed: 1.0,
     ttsAutoPlay: false,
     // Chatterbox TTS 기본값
-    chatterboxApiUrl: 'http://localhost:4123',
+    chatterboxApiUrl: 'http://localhost:4123', // 경고: HTTP는 보안에 취약합니다. 가능하면 HTTPS를 사용하세요.
     chatterboxExaggeration: 0.7,
     chatterboxCfgWeight: 0.4,
     chatterboxTemperature: 0.9,
@@ -549,7 +549,7 @@ export class VocabularySettingTab extends PluginSettingTab {
                 .setPlaceholder('http://localhost:4123')
                 .setValue(this.plugin.settings.chatterboxApiUrl)
                 .onChange(async (value) => {
-                    this.plugin.settings.chatterboxApiUrl = value || 'http://localhost:4123';
+                    this.plugin.settings.chatterboxApiUrl = value || 'http://localhost:4123'; // 기본값: HTTP (보안 위험)
                     await this.plugin.saveSettings();
                 }))
             .addButton(button => button

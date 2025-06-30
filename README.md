@@ -174,6 +174,6 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 If you find this plugin helpful, please consider:
 - ⭐ Starring the repository
-- 💝 [Sponsoring development](https://github.com/sponsors/shinners1)
+- 💝 [Buy Me a Coffee](https://buymeacoffee.com/obsidianvop)
 - 📢 Sharing with other English learners
 

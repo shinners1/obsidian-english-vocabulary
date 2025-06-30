@@ -6,33 +6,53 @@ export interface ChatterboxTTSSettings {
     enabled: boolean;
     apiUrl: string;
     voice: string;
+    response_format: string;
+    speed: number;
     exaggeration: number;
     cfgWeight: number;
     temperature: number;
+    streaming_chunk_size: number;
+    streaming_strategy: string;
+    streaming_buffer_size: number;
+    streaming_quality: string;
     autoPlay: boolean;
 }
 
 export interface ChatterboxTTSRequest {
     input: string;
     voice?: string;
+    response_format?: string;
+    speed?: number;
     exaggeration?: number;
     cfg_weight?: number;
     temperature?: number;
+    streaming_chunk_size?: number;
+    streaming_strategy?: string;
+    streaming_buffer_size?: number;
+    streaming_quality?: string;
 }
 
 export class ChatterboxTTSService implements TTSService {
     private settings: ChatterboxTTSSettings;
     private audioManager: AudioManager;
     private networkManager: NetworkResourceManager;
+    private audioElement: HTMLAudioElement | null = null;
+    private currentAudioContext: AudioContext | null = null;
 
     constructor(settings: ChatterboxTTSSettings) {
         this.settings = {
             enabled: settings.enabled || false,
             apiUrl: settings.apiUrl || 'http://localhost:4123',
             voice: settings.voice || 'alloy',
-            exaggeration: settings.exaggeration || 0.7,
-            cfgWeight: settings.cfgWeight || 0.4,
-            temperature: settings.temperature || 0.9,
+            response_format: settings.response_format || 'wav',
+            speed: settings.speed || 1,
+            exaggeration: settings.exaggeration || 0.25,
+            cfgWeight: settings.cfgWeight || 1,
+            temperature: settings.temperature || 0.05,
+            streaming_chunk_size: settings.streaming_chunk_size || 50,
+            streaming_strategy: settings.streaming_strategy || 'string',
+            streaming_buffer_size: settings.streaming_buffer_size || 1,
+            streaming_quality: settings.streaming_quality || 'string',
             autoPlay: settings.autoPlay || false
         };
         this.audioManager = AudioManager.getInstance();
@@ -91,9 +111,15 @@ export class ChatterboxTTSService implements TTSService {
         const requestBody: ChatterboxTTSRequest = {
             input: truncatedText,
             voice: this.settings.voice,
+            response_format: this.settings.response_format,
+            speed: this.settings.speed,
             exaggeration: this.settings.exaggeration,
             cfg_weight: this.settings.cfgWeight,
-            temperature: this.settings.temperature
+            temperature: this.settings.temperature,
+            streaming_chunk_size: this.settings.streaming_chunk_size,
+            streaming_strategy: this.settings.streaming_strategy,
+            streaming_buffer_size: this.settings.streaming_buffer_size,
+            streaming_quality: this.settings.streaming_quality
         };
 
 

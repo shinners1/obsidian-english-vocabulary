@@ -28,9 +28,15 @@ export class TTSServiceFactory {
                 enabled: settings.ttsEnabled,
                 apiUrl: settings.chatterboxApiUrl,
                 voice: settings.ttsVoice,
+                response_format: 'wav',
+                speed: 1,
                 exaggeration: settings.chatterboxExaggeration,
                 cfgWeight: settings.chatterboxCfgWeight,
                 temperature: settings.chatterboxTemperature,
+                streaming_chunk_size: 50,
+                streaming_strategy: 'string',
+                streaming_buffer_size: 1,
+                streaming_quality: 'string',
                 autoPlay: settings.ttsAutoPlay
             };
             return new ChatterboxTTSService(chatterboxSettings);
@@ -95,9 +101,15 @@ export function convertLegacySettings(legacySettings: LegacyTTSSettings): Chatte
         enabled: legacySettings.enabled,
         apiUrl: 'http://localhost:4123',
         voice: legacySettings.voice || 'alloy',
-        exaggeration: 0.7,
-        cfgWeight: 0.4,
-        temperature: 0.9,
+        response_format: 'wav',
+        speed: 1,
+        exaggeration: 0.25,
+        cfgWeight: 1,
+        temperature: 0.05,
+        streaming_chunk_size: 50,
+        streaming_strategy: 'string',
+        streaming_buffer_size: 1,
+        streaming_quality: 'string',
         autoPlay: legacySettings.autoPlay
     };
 }

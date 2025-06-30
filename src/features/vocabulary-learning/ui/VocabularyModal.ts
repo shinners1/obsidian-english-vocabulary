@@ -30,12 +30,6 @@ export class VocabularyModal extends Modal {
         // Spaced Repetition: 복습이 필요한 카드들만 가져오기
         this.cards = this.spacedRepetitionService.getCardsForReview(allCards);
         
-        // 디버깅: 카드 데이터 확인
-        console.log('전체 카드 수:', allCards.length);
-        console.log('복습 대상 카드 수:', this.cards.length);
-        if (this.cards.length > 0) {
-            console.log('첫 번째 복습 카드:', this.cards[0].word);
-        }
         
         if (this.cards.length === 0) {
             this.showNoCardsForReview(allCards.length);
@@ -343,13 +337,6 @@ export class VocabularyModal extends Modal {
                 result.updatedCard.scheduleInfo
             );
             
-            // Debug logging
-            console.log(`Card "${currentCard.word}" reviewed:`, {
-                response: reviewResponse,
-                newInterval: result.updatedCard.scheduleInfo?.interval,
-                newDueDate: result.updatedCard.scheduleInfo?.dueDate,
-                newEase: result.updatedCard.scheduleInfo?.ease
-            });
             
             // 다음 카드로 이동
             this.currentCardIndex++;

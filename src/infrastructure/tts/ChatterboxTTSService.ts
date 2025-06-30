@@ -1,5 +1,6 @@
 import { Notice } from 'obsidian';
 import { TTSService } from './TTSInterface';
+import { AudioManager, NetworkResourceManager } from '../../shared/AudioManager';
 
 export interface ChatterboxTTSSettings {
     enabled: boolean;
@@ -20,9 +21,9 @@ export interface ChatterboxTTSRequest {
 }
 
 export class ChatterboxTTSService implements TTSService {
-    private audioElement: HTMLAudioElement | null = null;
     private settings: ChatterboxTTSSettings;
-    private currentAudioContext: AudioContext | null = null;
+    private audioManager: AudioManager;
+    private networkManager: NetworkResourceManager;
 
     constructor(settings: ChatterboxTTSSettings) {
         this.settings = {
@@ -34,6 +35,8 @@ export class ChatterboxTTSService implements TTSService {
             temperature: settings.temperature || 0.9,
             autoPlay: settings.autoPlay || false
         };
+        this.audioManager = AudioManager.getInstance();
+        this.networkManager = NetworkResourceManager.getInstance();
     }
 
     async speakText(text: string): Promise<void> {
@@ -69,7 +72,6 @@ export class ChatterboxTTSService implements TTSService {
             return;
         }
 
-        console.log(`TTS: 단어 발음 - "${word}"`);
         await this.speakText(word);
     }
 
@@ -79,7 +81,6 @@ export class ChatterboxTTSService implements TTSService {
             return;
         }
 
-        console.log(`TTS: 예문 발음 - "${example}"`);
         await this.speakText(example);
     }
 
@@ -95,10 +96,6 @@ export class ChatterboxTTSService implements TTSService {
             temperature: this.settings.temperature
         };
 
-        console.log('Chatterbox TTS API 요청:', {
-            url: `${this.settings.apiUrl}/v1/audio/speech`,
-            body: requestBody
-        });
 
         const response = await fetch(`${this.settings.apiUrl}/v1/audio/speech`, {
             method: 'POST',
@@ -207,7 +204,6 @@ export class ChatterboxTTSService implements TTSService {
     // 설정 업데이트
     updateSettings(newSettings: Partial<ChatterboxTTSSettings>): void {
         this.settings = { ...this.settings, ...newSettings };
-        console.log('Chatterbox TTS 설정 업데이트:', this.settings);
     }
 
     // 연결 테스트

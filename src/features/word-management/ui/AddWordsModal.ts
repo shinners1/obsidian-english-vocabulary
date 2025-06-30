@@ -2,12 +2,16 @@ import { Modal, App, Notice } from 'obsidian';
 import EnglishVocabularyPlugin from '../../../main';
 import { WordService } from '../../../infrastructure/external/WordService';
 import { AddBookModal } from '../../book-management/ui/AddBookModal';
+import { validateWord, validateBatch, sanitizeMarkdown } from '../../../shared/validation';
+import { CancellationTokenSource, CancellationError, processBatchWithCancellation } from '../../../shared/CancellationToken';
+import { getConfigValue, CONFIG_PATHS } from '../../../shared/Config';
 
 export class AddWordsModal extends Modal {
     plugin: EnglishVocabularyPlugin;
     wordService: WordService;
     isProcessing = false;
     private bookSelect: HTMLSelectElement;
+    private cancellationTokenSource: CancellationTokenSource | null = null;
 
     constructor(app: App, plugin: EnglishVocabularyPlugin) {
         super(app);
@@ -87,7 +91,13 @@ export class AddWordsModal extends Modal {
             text: '취소',
             cls: 'cancel-button'
         });
-        cancelButton.addEventListener('click', () => this.close());
+        cancelButton.addEventListener('click', () => {
+            if (this.isProcessing) {
+                this.cancelOperation();
+            } else {
+                this.close();
+            }
+        });
 
         // 진행 상황 표시 영역
         const progressSection = contentEl.createEl('div', { cls: 'progress-section' });
@@ -126,7 +136,9 @@ export class AddWordsModal extends Modal {
         }
 
         this.isProcessing = true;
+        this.cancellationTokenSource = new CancellationTokenSource();
         this.showProgress(words.length);
+        this.updateCancelButton(true);
 
         const results = {
             success: [] as string[],
@@ -134,54 +146,91 @@ export class AddWordsModal extends Modal {
             alreadyExists: [] as string[]
         };
 
-        for (let i = 0; i < words.length; i++) {
-            const word = words[i];
-            
-            // 진행률 업데이트
-            this.updateProgress(i + 1, words.length, `처리 중: ${word}`);
+        try {
+            await processBatchWithCancellation(
+                words,
+                async (word: string, index: number) => {
+                    // 이미 존재하는지 확인
+                    const existingWord = this.plugin.databaseManager.getWord(word);
+                    if (existingWord) {
+                        results.alreadyExists.push(word);
+                        return;
+                    }
 
-            try {
-                // 이미 존재하는지 확인
-                const existingWord = this.plugin.databaseManager.getWord(word);
-                if (existingWord) {
-                    results.alreadyExists.push(word);
-                    continue;
+                    try {
+                        // 단어 데이터 가져오기
+                        const wordData = await this.wordService.getWordData(word);
+                        
+                        // WordData를 VocabularyCard로 변환
+                        const vocabularyCard = {
+                            ...wordData,
+                            reviewCount: 0,
+                            difficulty: 'good' as const,
+                            lastReviewed: null,
+                            addedDate: new Date().toISOString(),
+                            bookId: bookId
+                        };
+                        
+                        // 데이터베이스에 추가
+                        await this.plugin.databaseManager.addWord(vocabularyCard);
+                        results.success.push(word);
+                    } catch (error) {
+                        results.failed.push(word);
+                        console.error(`단어 "${word}" 추가 실패:`, error);
+                    }
+                },
+                {
+                    batchSize: getConfigValue<number>(CONFIG_PATHS.BATCH_DEFAULT_SIZE),
+                    delay: getConfigValue<number>(CONFIG_PATHS.BATCH_DELAY),
+                    cancellationToken: this.cancellationTokenSource.token,
+                    onProgress: (current, total) => {
+                        this.updateProgress(current, total, `처리 중... (${current}/${total})`);
+                    }
                 }
-
-                // 단어 데이터 가져오기
-                const wordData = await this.wordService.getWordData(word);
-                
-                // WordData를 VocabularyCard로 변환
-                const vocabularyCard = {
-                    ...wordData,
-                    reviewCount: 0,
-                    difficulty: 'good' as const,
-                    lastReviewed: null,
-                    addedDate: new Date().toISOString(),
-                    bookId: bookId
-                };
-                
-                // 데이터베이스에 추가
-                await this.plugin.databaseManager.addWord(vocabularyCard);
-                results.success.push(word);
-
-            } catch (error) {
-                console.error(`단어 "${word}" 추가 실패:`, error);
-                results.failed.push(word);
+            );
+        } catch (error) {
+            if (error instanceof CancellationError) {
+                new Notice('작업이 취소되었습니다.');
+            } else {
+                console.error('배치 처리 중 오류:', error);
+                new Notice('단어 추가 중 오류가 발생했습니다.');
             }
+        } finally {
+            this.isProcessing = false;
+            this.cancellationTokenSource?.dispose();
+            this.cancellationTokenSource = null;
+            this.hideProgress();
+            this.updateCancelButton(false);
+            this.showResults(results);
         }
-
-        this.hideProgress();
-        this.showResults(results);
     }
 
     private parseWords(inputText: string): string[] {
-        return inputText
+        // 입력 텍스트 정제
+        const sanitizedInput = sanitizeMarkdown(inputText);
+        
+        const rawWords = sanitizedInput
             .split('\n')
             .map(word => word.trim())
-            .filter(word => word.length > 0)
+            .filter(word => word.length > 0);
+
+        // 단어 검증 및 정제
+        const validation = validateBatch(rawWords, (word) => validateWord(word));
+        
+        // 유효하지 않은 단어가 있으면 사용자에게 알림
+        if (validation.invalid.length > 0) {
+            const invalidWords = validation.invalid.slice(0, 5).map(item => item.item).join(', ');
+            const moreCount = validation.invalid.length > 5 ? ` 외 ${validation.invalid.length - 5}개` : '';
+            new Notice(`유효하지 않은 단어가 제외되었습니다: ${invalidWords}${moreCount}`);
+        }
+
+        // 유효한 단어들만 반환 (중복 제거)
+        const validWords = validation.valid
+            .map(word => validateWord(word).sanitized!)
             .map(word => word.toLowerCase())
-            .filter((word, index, array) => array.indexOf(word) === index); // 중복 제거
+            .filter((word, index, array) => array.indexOf(word) === index);
+
+        return validWords;
     }
 
     private showProgress(totalWords: number) {
@@ -285,8 +334,31 @@ export class AddWordsModal extends Modal {
         }
     }
 
+    private cancelOperation(): void {
+        if (this.cancellationTokenSource) {
+            this.cancellationTokenSource.cancel();
+            new Notice('작업 취소 중...');
+        }
+    }
+
+    private updateCancelButton(isProcessing: boolean): void {
+        const cancelButton = this.contentEl.querySelector('.cancel-button') as HTMLButtonElement;
+        if (cancelButton) {
+            cancelButton.textContent = isProcessing ? '작업 취소' : '취소';
+            cancelButton.classList.toggle('danger', isProcessing);
+        }
+    }
+
     onClose() {
+        // 진행 중인 작업 취소
+        if (this.isProcessing && this.cancellationTokenSource) {
+            this.cancellationTokenSource.cancel();
+        }
+        
         this.isProcessing = false;
+        this.cancellationTokenSource?.dispose();
+        this.cancellationTokenSource = null;
+        
         const { contentEl } = this;
         contentEl.empty();
         

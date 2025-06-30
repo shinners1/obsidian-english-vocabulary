@@ -27,7 +27,7 @@ export class MarkdownDatabase {
                 if (errorMessage.includes('already exists') || 
                     errorMessage.includes('folder already exists') ||
                     errorMessage.includes('already present')) {
-                    console.log('단어장 폴더가 이미 존재합니다:', this.vocabularyFolderPath);
+                    // 단어장 폴더가 이미 존재하는 경우 (정상)
                 } else {
                     console.warn('단어장 폴더 생성 실패:', error);
                 }

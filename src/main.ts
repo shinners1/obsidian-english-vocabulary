@@ -13,6 +13,9 @@ import { encryptApiKey, decryptApiKey } from './utils';
 import { DIContainer, container } from './shared/container/DIContainer';
 import { ServiceRegistry } from './shared/container/ServiceRegistry';
 
+// Error Boundary
+import { ErrorBoundary } from './shared/ErrorBoundary';
+
 export default class EnglishVocabularyPlugin extends Plugin {
     settings: VocabularySettings;
     databaseManager: VocabularyDatabaseManager;
@@ -20,7 +23,18 @@ export default class EnglishVocabularyPlugin extends Plugin {
     private container: DIContainer;
 
     async onload() {
-        console.log('영어 단어 학습 플러그인이 로드되었습니다.');
+        // Error Boundary 초기화
+        const errorBoundary = ErrorBoundary.getInstance();
+        errorBoundary.initialize();
+        
+        // 플러그인별 에러 핸들러 등록
+        errorBoundary.registerHandler('VocabularyPlugin', (errorInfo) => {
+            // 플러그인 관련 에러 처리 로직
+            if (errorInfo.context?.includes('API')) {
+                // API 관련 에러는 재시도 또는 폴백 처리
+                console.warn('API 에러 감지, 폴백 모드로 전환');
+            }
+        });
 
         await this.loadSettings();
 
@@ -80,7 +94,10 @@ export default class EnglishVocabularyPlugin extends Plugin {
     }
 
     onunload() {
-        console.log('영어 단어 학습 플러그인이 언로드되었습니다.');
+        // Error Boundary 정리
+        const errorBoundary = ErrorBoundary.getInstance();
+        errorBoundary.unregisterHandler('VocabularyPlugin');
+        errorBoundary.cleanup();
     }
 
     async loadSettings() {
@@ -107,7 +124,6 @@ export default class EnglishVocabularyPlugin extends Plugin {
 
         // llmApiKey가 평문으로 저장되어 있는지 확인하고 암호화
         if (this.settings.llmApiKey && this.isPlainTextApiKey(this.settings.llmApiKey)) {
-            console.log('llmApiKey를 암호화합니다...');
             const plainKey = this.settings.llmApiKey;
             this.settings.llmApiKey = encryptApiKey(plainKey);
             needsSave = true;
@@ -115,21 +131,18 @@ export default class EnglishVocabularyPlugin extends Plugin {
 
         // 다른 API 키들도 평문인지 확인하고 암호화 (기존에 암호화되지 않은 경우)
         if (this.settings.openaiApiKey && this.isPlainTextApiKey(this.settings.openaiApiKey)) {
-            console.log('openaiApiKey를 암호화합니다...');
             const plainKey = this.settings.openaiApiKey;
             this.settings.openaiApiKey = encryptApiKey(plainKey);
             needsSave = true;
         }
 
         if (this.settings.anthropicApiKey && this.isPlainTextApiKey(this.settings.anthropicApiKey)) {
-            console.log('anthropicApiKey를 암호화합니다...');
             const plainKey = this.settings.anthropicApiKey;
             this.settings.anthropicApiKey = encryptApiKey(plainKey);
             needsSave = true;
         }
 
         if (this.settings.googleApiKey && this.isPlainTextApiKey(this.settings.googleApiKey)) {
-            console.log('googleApiKey를 암호화합니다...');
             const plainKey = this.settings.googleApiKey;
             this.settings.googleApiKey = encryptApiKey(plainKey);
             needsSave = true;
@@ -138,7 +151,6 @@ export default class EnglishVocabularyPlugin extends Plugin {
         // 변경사항이 있으면 저장
         if (needsSave) {
             await this.saveSettings();
-            console.log('API 키 암호화 마이그레이션이 완료되었습니다.');
         }
     }
 
@@ -176,8 +188,6 @@ export default class EnglishVocabularyPlugin extends Plugin {
         try {
             const savedData = await this.loadData();
             if (savedData && savedData.database && Array.isArray(savedData.database.words)) {
-                console.log('기존 data.json에서 MD 파일로 마이그레이션 시작...');
-                
                 const legacyData = savedData.database;
                 
                 // 기존 단어들을 기본 단어장에 추가
@@ -199,8 +209,6 @@ export default class EnglishVocabularyPlugin extends Plugin {
                 if (legacyData.settings) {
                     await this.databaseManager.updateSettings(legacyData.settings);
                 }
-                
-                console.log('마이그레이션 완료');
             }
         } catch (error) {
             console.error('마이그레이션 실패:', error);

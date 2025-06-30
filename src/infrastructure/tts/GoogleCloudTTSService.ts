@@ -1,5 +1,6 @@
 import { Notice } from 'obsidian';
 import { TTSService } from './TTSInterface';
+import { AudioManager, NetworkResourceManager } from '../../shared/AudioManager';
 
 export interface GoogleCloudTTSSettings {
     enabled: boolean;
@@ -32,8 +33,9 @@ export interface GoogleCloudTTSResponse {
 }
 
 export class GoogleCloudTTSService implements TTSService {
-    private audioElement: HTMLAudioElement | null = null;
     private settings: GoogleCloudTTSSettings;
+    private audioManager: AudioManager;
+    private networkManager: NetworkResourceManager;
 
     constructor(settings: GoogleCloudTTSSettings) {
         this.settings = {
@@ -45,6 +47,8 @@ export class GoogleCloudTTSService implements TTSService {
             pitch: settings.pitch || 0.0,
             autoPlay: settings.autoPlay || false
         };
+        this.audioManager = AudioManager.getInstance();
+        this.networkManager = NetworkResourceManager.getInstance();
     }
 
     async speakText(text: string): Promise<void> {
@@ -81,7 +85,6 @@ export class GoogleCloudTTSService implements TTSService {
             return;
         }
 
-        console.log(`TTS: 단어 발음 - "${word}"`);
         await this.speakText(word);
     }
 
@@ -91,7 +94,6 @@ export class GoogleCloudTTSService implements TTSService {
             return;
         }
 
-        console.log(`TTS: 예문 발음 - "${example}"`);
         await this.speakText(example);
     }
 
@@ -113,15 +115,19 @@ export class GoogleCloudTTSService implements TTSService {
             }
         };
 
-        console.log('Google Cloud TTS API 요청:', requestBody);
 
-        const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${this.settings.apiKey}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
+        const response = await this.networkManager.fetch(
+            `https://texttospeech.googleapis.com/v1/text:synthesize?key=${this.settings.apiKey}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
             },
-            body: JSON.stringify(requestBody)
-        });
+            `google-tts-${Date.now()}`, // 고유 식별자
+            10000 // 10초 타임아웃
+        );
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -180,38 +186,42 @@ export class GoogleCloudTTSService implements TTSService {
     private async playAudioData(base64Audio: string): Promise<void> {
         return new Promise((resolve, reject) => {
             try {
-                if (this.audioElement) {
-                    this.audioElement.pause();
-                    this.audioElement.src = '';
-                }
-
-                this.audioElement = new Audio();
-                
+                // AudioManager를 사용한 안전한 오디오 재생
                 const audioBlob = this.base64ToBlob(base64Audio, 'audio/mp3');
                 const audioUrl = URL.createObjectURL(audioBlob);
-                this.audioElement.src = audioUrl;
+                
+                const audio = this.audioManager.createAudio(audioUrl);
 
-                this.audioElement.onended = () => {
+                const cleanup = () => {
                     URL.revokeObjectURL(audioUrl);
+                    this.audioManager.releaseAudio(audio);
+                };
+
+                audio.onended = () => {
+                    cleanup();
                     resolve();
                 };
 
-                this.audioElement.onerror = () => {
-                    URL.revokeObjectURL(audioUrl);
+                audio.onerror = () => {
+                    cleanup();
                     reject(new Error('오디오 재생 중 오류가 발생했습니다.'));
                 };
 
-                this.audioElement.onloadeddata = () => {
-                    if (this.audioElement) {
-                        this.audioElement.play().catch(error => {
-                            console.error('오디오 재생 실패:', error);
-                            URL.revokeObjectURL(audioUrl);
-                            reject(error);
-                        });
-                    }
+                audio.onloadeddata = () => {
+                    audio.play().catch(error => {
+                        console.error('오디오 재생 실패:', error);
+                        cleanup();
+                        reject(error);
+                    });
                 };
 
-                this.audioElement.load();
+                // 타임아웃 설정 (30초)
+                setTimeout(() => {
+                    if (!audio.ended && !audio.paused) {
+                        cleanup();
+                        reject(new Error('오디오 재생 시간 초과'));
+                    }
+                }, 30000);
 
             } catch (error) {
                 reject(error);
@@ -232,40 +242,34 @@ export class GoogleCloudTTSService implements TTSService {
     }
 
     stopSpeaking(): void {
-        if (this.audioElement) {
-            this.audioElement.pause();
-            this.audioElement.currentTime = 0;
-            
-            if (this.audioElement.src && this.audioElement.src.startsWith('blob:')) {
-                URL.revokeObjectURL(this.audioElement.src);
-            }
-            
-            this.audioElement.src = '';
-        }
+        // AudioManager를 통해 모든 오디오 정지
+        this.audioManager.stopAllAudio();
     }
 
     isPaused(): boolean {
-        return !this.audioElement || this.audioElement.paused;
+        // 현재 활성 오디오가 있는지 확인
+        const status = this.audioManager.getStatus();
+        return status.active === 0;
     }
 
     resume(): void {
-        if (this.audioElement && this.audioElement.paused) {
-            this.audioElement.play().catch(error => {
-                console.error('오디오 재개 실패:', error);
-                new Notice('오디오 재개에 실패했습니다.');
-            });
-        }
+        // AudioManager는 개별 오디오 요소를 관리하므로 
+        // 여기서는 새로운 요청으로 처리
+        new Notice('음성을 다시 재생하려면 버튼을 다시 클릭해주세요.');
     }
 
     pause(): void {
-        if (this.audioElement && !this.audioElement.paused) {
-            this.audioElement.pause();
-        }
+        this.stopSpeaking();
     }
 
     updateSettings(newSettings: Partial<GoogleCloudTTSSettings>): void {
         this.settings = { ...this.settings, ...newSettings };
-        console.log('Google Cloud TTS 설정 업데이트:', this.settings);
+    }
+
+    // 리소스 정리
+    cleanup(): void {
+        this.audioManager.cleanup();
+        this.networkManager.cancelAllRequests();
     }
 
     async testConnection(): Promise<boolean> {

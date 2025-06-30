@@ -222,7 +222,6 @@ export class LLMServiceFactory {
      */
     static initialize(): void {
         this.initializeWithDefaults();
-        console.log('LLMServiceFactory 초기화 완료');
     }
 
     /**
@@ -230,7 +229,6 @@ export class LLMServiceFactory {
      */
     static dispose(): void {
         this.clearAllServices();
-        console.log('LLMServiceFactory 정리 완료');
     }
 }
 

@@ -168,7 +168,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 - **Issues**: [GitHub Issues](https://github.com/shinners1/obsidian-english-vocabulary/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/shinners1/obsidian-english-vocabulary/discussions)
-- **Email**: shinners1@github.com
+- **Email**: obsidian.voca@gmail.com
 
 ---
 

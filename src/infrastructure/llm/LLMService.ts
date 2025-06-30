@@ -1,6 +1,7 @@
 import { VocabularySettings } from '../../features/settings/ui/settings';
 import { WordData } from '../../VocabularyCard';
 import { decryptApiKey } from '../../utils';
+import { retryAPICall, APIRetryPolicy } from '../../shared/RetryPolicy';
 import axios from 'axios';
 
 export interface LLMResponse {
@@ -26,9 +27,15 @@ export interface WordDetailData {
 
 export class LLMService {
     private settings: VocabularySettings;
+    private retryPolicy: APIRetryPolicy;
 
     constructor(settings: VocabularySettings) {
         this.settings = settings;
+        this.retryPolicy = new APIRetryPolicy({
+            maxAttempts: 3,
+            delayMs: 2000,
+            exponentialBackoff: true
+        });
     }
 
     // 현재 선택된 제공업체의 API 키를 가져오는 메서드
@@ -107,7 +114,6 @@ export class LLMService {
             const allResults: WordDetailData[] = [];
             const totalBatches = Math.ceil(words.length / BATCH_SIZE);
 
-            console.log(`총 ${words.length}개 단어를 ${totalBatches}개 배치로 나누어 처리합니다.`);
             
             if (progressCallback) {
                 progressCallback(0, words.length, `총 ${words.length}개 단어를 ${totalBatches}개 배치로 나누어 처리합니다.`);
@@ -117,7 +123,6 @@ export class LLMService {
                 const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
                 const batchWords = words.slice(i, i + BATCH_SIZE);
                 
-                console.log(`배치 ${batchNumber}/${totalBatches} 처리 중... (${batchWords.length}개 단어)`);
                 
                 if (progressCallback) {
                     progressCallback(i, words.length, `배치 ${batchNumber}/${totalBatches} 처리 중... (${batchWords.length}개 단어)`);
@@ -130,7 +135,6 @@ export class LLMService {
                     if (response.success) {
                         const parsedData = this.parseMultipleWordDetailResponse(response.data, batchWords);
                         allResults.push(...parsedData);
-                        console.log(`배치 ${batchNumber} 완료: ${parsedData.length}개 단어 처리됨`);
                         
                         if (progressCallback) {
                             progressCallback(i + batchWords.length, words.length, `배치 ${batchNumber} 완료: ${parsedData.length}개 단어 처리됨`);
@@ -160,7 +164,6 @@ export class LLMService {
                 }
             }
 
-            console.log(`모든 배치 처리 완료. 총 ${allResults.length}개 단어 데이터 수집됨`);
             if (progressCallback) {
                 progressCallback(words.length, words.length, `모든 배치 처리 완료. 총 ${allResults.length}개 단어 데이터 수집됨`);
             }
@@ -180,7 +183,6 @@ export class LLMService {
             const currentIndex = startIndex + i;
             
             try {
-                console.log(`개별 처리: "${word}"`);
                 if (progressCallback) {
                     progressCallback(currentIndex, startIndex + words.length, `개별 처리: "${word}"`);
                 }
@@ -315,24 +317,26 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
 
     private async callOpenAI(prompt: string): Promise<LLMResponse> {
         try {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.getCurrentApiKey()}`
-                },
-                body: JSON.stringify({
-                    model: this.settings.llmModel,
-                    messages: [
-                        {
-                            role: 'user',
-                            content: prompt
-                        }
-                    ],
-                    temperature: 0.3,
-                    max_tokens: 4000
-                })
-            });
+            const response = await retryAPICall(async () => {
+                    return fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.getCurrentApiKey()}`
+                        },
+                        body: JSON.stringify({
+                            model: this.settings.llmModel,
+                            messages: [
+                                {
+                                    role: 'user',
+                                    content: prompt
+                                }
+                            ],
+                            temperature: 0.3,
+                            max_tokens: 4000
+                        })
+                    });
+                });
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -395,27 +399,29 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
 
     private async callGoogle(prompt: string): Promise<LLMResponse> {
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.settings.llmModel}:generateContent?key=${this.getCurrentApiKey()}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            parts: [
+            const response = await retryAPICall(async () => {
+                    return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.settings.llmModel}:generateContent?key=${this.getCurrentApiKey()}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            contents: [
                                 {
-                                    text: prompt
+                                    parts: [
+                                        {
+                                            text: prompt
+                                        }
+                                    ]
                                 }
-                            ]
-                        }
-                    ],
-                    generationConfig: {
-                        temperature: 0.3,
-                        maxOutputTokens: 4000
-                    }
-                })
-            });
+                            ],
+                            generationConfig: {
+                                temperature: 0.3,
+                                maxOutputTokens: 4000
+                            }
+                        })
+                    });
+                });
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -494,7 +500,6 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
 
     private parseMultipleWordDetailResponse(response: string, originalWords: string[]): WordDetailData[] {
         try {
-            console.log('원본 응답:', response);
             
             // 1. 완전한 JSON 배열을 찾아보기
             let jsonMatch = response.match(/\[[\s\S]*\]/);
@@ -510,7 +515,7 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
                             return this.processJsonData(jsonData, originalWords);
                         }
                     } catch (e) {
-                        console.log('개별 객체 파싱 실패:', e);
+                        // 파싱 실패 시 무시
                     }
                 }
                 
@@ -530,7 +535,7 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
             try {
                 jsonData = JSON.parse(jsonMatch[0]);
             } catch (parseError) {
-                console.log('JSON 파싱 실패, 점진적 파싱 시도:', parseError);
+                // JSON 파싱 실패 시 점진적 파싱 시도
                 
                 // 5. 점진적 파싱 시도 - 완전한 객체들만 파싱
                 const results = this.parseIncrementalJson(response);
@@ -543,7 +548,6 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
                 try {
                     jsonData = JSON.parse(fixedJson);
                 } catch (secondError) {
-                    console.log('JSON 복구 실패:', secondError);
                     throw new Error('JSON 파싱 및 복구 실패');
                 }
             }
@@ -593,7 +597,7 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
                     results.push(wordData);
                 }
             } catch (e) {
-                console.log('개별 객체 파싱 실패:', e);
+                // 개별 객체 파싱 실패 시 무시
                 continue;
             }
         }

@@ -1,7 +1,7 @@
 {
     "id": "obsidian-english-vocabulary",
     "name": "English Vocabulary Learning",
-    "version": "1.0.0",
+    "version": "0.1",
     "minAppVersion": "1.2.8",
     "description": "AI-powered English vocabulary learning with spaced repetition algorithm. Features flashcards, TTS pronunciation, and SM-2 algorithm for optimal learning.",
     "author": "Shinners",

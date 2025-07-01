@@ -3,11 +3,12 @@ import { GoogleCloudTTSService, GoogleCloudTTSSettings } from './GoogleCloudTTSS
 import { TTSService } from './TTSInterface';
 import { VocabularySettings } from '../../features/settings/ui/settings';
 import { decryptApiKey } from '../../utils';
+import { App } from 'obsidian';
 
 // TTS 서비스 팩토리
 export class TTSServiceFactory {
-    static createTTSService(settings: VocabularySettings): TTSService {
-        if (!settings.ttsEnabled) {
+    static createTTSService(app: App, settings?: VocabularySettings): TTSService {
+        if (!settings || !settings.ttsEnabled) {
             return new NoOpTTSService();
         }
 
@@ -19,9 +20,10 @@ export class TTSServiceFactory {
                 languageCode: settings.googleCloudTTSLanguageCode,
                 speakingRate: settings.googleCloudTTSSpeakingRate,
                 pitch: settings.googleCloudTTSPitch,
-                autoPlay: settings.ttsAutoPlay
+                autoPlay: settings.ttsAutoPlay,
+                cacheEnabled: settings.ttsCacheEnabled
             };
-            return new GoogleCloudTTSService(googleSettings);
+            return new GoogleCloudTTSService(app, googleSettings);
         } else {
             // 기본값: Chatterbox TTS
             const chatterboxSettings: ChatterboxTTSSettings = {

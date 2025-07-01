@@ -53,7 +53,7 @@ export class ServiceRegistry {
         });
 
         container.register('ttsService', TTSServiceAdapter, {
-            dependencies: ['settings']
+            dependencies: ['app', 'settings']
         });
 
         // Core Use Cases

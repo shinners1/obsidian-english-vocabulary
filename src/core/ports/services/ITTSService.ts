@@ -16,25 +16,26 @@ export interface PlaybackOptions extends TTSConfig {
 
 export interface ITTSService {
     // 기본 재생
-    speak(text: string, options?: PlaybackOptions): Promise<void>;
-    speakWord(word: string, options?: PlaybackOptions): Promise<void>;
+    speakText(text: string): Promise<void>;
+    speakWord(word: string): Promise<void>;
+    speakExample?(example: string): Promise<void>;
     
     // 재생 제어
     pause(): void;
     resume(): void;
-    stop(): void;
+    stopSpeaking(): void;
     
     // 상태 확인
-    isSupported(): boolean;
-    isSpeaking(): boolean;
+    isEnabled?(): boolean;
     isPaused(): boolean;
     
     // 설정 관리
-    setConfig(config: TTSConfig): void;
-    getConfig(): TTSConfig;
     getAvailableVoices(): SpeechSynthesisVoice[];
+    testConnection?(): Promise<boolean>;
     
-    // 이벤트 처리
-    onStateChanged(callback: (state: 'idle' | 'speaking' | 'paused') => void): void;
-    offStateChanged(callback: (state: 'idle' | 'speaking' | 'paused') => void): void;
+    // 설정 업데이트 (어댑터용)
+    updateSettings?(settings: any): void;
+    
+    // 정리
+    destroy?(): void;
 } 

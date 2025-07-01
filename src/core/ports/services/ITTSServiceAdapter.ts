@@ -1,12 +1,15 @@
 import { ITTSService } from './ITTSService';
 import { TTSService, TTSServiceFactory } from '../../../infrastructure/tts/TTSService';
 import { VocabularySettings } from '../../../features/settings/ui/settings';
+import { App } from 'obsidian';
 
 export class TTSServiceAdapter implements ITTSService {
     private ttsService: TTSService;
+    private app: App;
 
-    constructor(settings: VocabularySettings) {
-        this.ttsService = TTSServiceFactory.createTTSService(settings);
+    constructor(app: App, settings?: VocabularySettings) {
+        this.app = app;
+        this.ttsService = TTSServiceFactory.createTTSService(app, settings);
     }
 
     async speakText(text: string): Promise<void> {
@@ -30,7 +33,7 @@ export class TTSServiceAdapter implements ITTSService {
         this.ttsService.destroy();
         
         // 새 설정으로 TTS 서비스 재생성
-        this.ttsService = TTSServiceFactory.createTTSService(settings);
+        this.ttsService = TTSServiceFactory.createTTSService(this.app, settings);
     }
 
     isEnabled(): boolean {

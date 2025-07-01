@@ -36,6 +36,8 @@ export interface VocabularySettings {
     googleCloudTTSLanguageCode: string;
     googleCloudTTSSpeakingRate: number;
     googleCloudTTSPitch: number;
+    // TTS 캐시 설정
+    ttsCacheEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: VocabularySettings = {
@@ -66,7 +68,9 @@ export const DEFAULT_SETTINGS: VocabularySettings = {
     googleCloudTTSApiKey: '',
     googleCloudTTSLanguageCode: 'en-US',
     googleCloudTTSSpeakingRate: 1.0,
-    googleCloudTTSPitch: 0.0
+    googleCloudTTSPitch: 0.0,
+    // TTS 캐시 설정
+    ttsCacheEnabled: true
 };
 
 export class VocabularySettingTab extends PluginSettingTab {
@@ -423,6 +427,9 @@ export class VocabularySettingTab extends PluginSettingTab {
                     this.plugin.settings.ttsAutoPlay = value;
                     await this.plugin.saveSettings();
                 }));
+
+        // TTS 캐시 관리 섹션
+        this.createTTSCacheSettings(containerEl);
         
         // 초기 상태 설정
         this.updateTTSSettingsVisibility();
@@ -475,7 +482,7 @@ export class VocabularySettingTab extends PluginSettingTab {
         
         // 모든 TTS 관련 설정들
         const allTtsSettings = this.containerEl.querySelectorAll(
-            '.tts-provider-setting, .chatterbox-api-url-setting, .chatterbox-voice-setting, .chatterbox-exaggeration-setting, .chatterbox-cfg-setting, .chatterbox-temperature-setting, .google-cloud-tts-guide, .google-cloud-api-key-setting, .google-cloud-language-setting, .google-cloud-voice-setting, .google-cloud-speaking-rate-setting, .google-cloud-pitch-setting, .tts-autoplay-setting'
+            '.tts-provider-setting, .chatterbox-api-url-setting, .chatterbox-voice-setting, .chatterbox-exaggeration-setting, .chatterbox-cfg-setting, .chatterbox-temperature-setting, .google-cloud-tts-guide, .google-cloud-api-key-setting, .google-cloud-language-setting, .google-cloud-voice-setting, .google-cloud-speaking-rate-setting, .google-cloud-pitch-setting, .tts-autoplay-setting, .tts-cache-header, .tts-cache-enabled-setting, .tts-cache-info-setting, .tts-cache-clear-setting'
         );
         
         allTtsSettings.forEach(setting => {
@@ -1128,6 +1135,104 @@ export class VocabularySettingTab extends PluginSettingTab {
         }
         
         return `API 오류: ${status} 상태 코드`;
+    }
+
+    private createTTSCacheSettings(containerEl: HTMLElement) {
+        // TTS 캐시 섹션 헤더
+        const cacheHeaderEl = containerEl.createEl('div', { 
+            cls: 'tts-cache-header',
+            attr: { style: 'margin-top: 20px; padding: 10px; background-color: var(--background-secondary); border-radius: 5px; border-left: 3px solid var(--interactive-accent);' }
+        });
+        
+        cacheHeaderEl.createEl('h4', { text: '🗂️ TTS 캐시 관리', attr: { style: 'margin: 0 0 5px 0; color: var(--interactive-accent);' } });
+        cacheHeaderEl.createEl('p', { text: '음성 파일을 로컬에 캐시하여 API 비용을 절약하고 응답 속도를 향상시킵니다.', attr: { style: 'margin: 0; font-size: 0.9em; opacity: 0.8;' } });
+
+        // 캐시 활성화 설정
+        new Setting(containerEl)
+            .setName('TTS 캐시 활성화')
+            .setDesc('TTS 음성 파일을 로컬에 캐시하여 재사용합니다.')
+            .setClass('tts-cache-enabled-setting')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.ttsCacheEnabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.ttsCacheEnabled = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        // 캐시 정보 표시
+        const cacheInfoSetting = new Setting(containerEl)
+            .setName('캐시 현황')
+            .setDesc('현재 저장된 TTS 캐시 파일 정보')
+            .setClass('tts-cache-info-setting');
+
+        this.updateCacheInfo(cacheInfoSetting);
+
+        // 캐시 삭제 버튼
+        new Setting(containerEl)
+            .setName('캐시 관리')
+            .setDesc('저장된 모든 TTS 캐시 파일을 삭제합니다.')
+            .setClass('tts-cache-clear-setting')
+            .addButton(button => button
+                .setButtonText('캐시 삭제')
+                .setTooltip('모든 TTS 캐시 파일을 삭제합니다')
+                .onClick(async () => {
+                    button.setButtonText('삭제 중...');
+                    button.setDisabled(true);
+                    
+                    try {
+                        const success = await this.clearTTSCache();
+                        if (success) {
+                            new Notice('✅ TTS 캐시가 성공적으로 삭제되었습니다.');
+                            // 캐시 정보 업데이트
+                            this.updateCacheInfo(cacheInfoSetting);
+                        } else {
+                            new Notice('❌ TTS 캐시 삭제에 실패했습니다.');
+                        }
+                    } catch (error) {
+                        console.error('TTS 캐시 삭제 오류:', error);
+                        new Notice('❌ TTS 캐시 삭제 중 오류가 발생했습니다.');
+                    } finally {
+                        button.setButtonText('캐시 삭제');
+                        button.setDisabled(false);
+                    }
+                }))
+            .addButton(button => button
+                .setButtonText('새로고침')
+                .setTooltip('캐시 정보를 새로고침합니다')
+                .onClick(async () => {
+                    this.updateCacheInfo(cacheInfoSetting);
+                    new Notice('캐시 정보가 업데이트되었습니다.');
+                }));
+    }
+
+    private async updateCacheInfo(setting: Setting): Promise<void> {
+        try {
+            // Google Cloud TTS 서비스에서 캐시 정보 가져오기
+            if (this.plugin.ttsService && 'getCacheInfo' in this.plugin.ttsService) {
+                const cacheInfo = await (this.plugin.ttsService as any).getCacheInfo();
+                
+                const infoText = `파일 개수: ${cacheInfo.totalFiles}개 | 용량: ${cacheInfo.formattedSize}`;
+                setting.setDesc(`현재 저장된 TTS 캐시 파일 정보 - ${infoText}`);
+            } else {
+                setting.setDesc('현재 저장된 TTS 캐시 파일 정보 - 캐시 서비스를 사용할 수 없습니다.');
+            }
+        } catch (error) {
+            console.error('캐시 정보 업데이트 오류:', error);
+            setting.setDesc('현재 저장된 TTS 캐시 파일 정보 - 정보를 가져오는 중 오류가 발생했습니다.');
+        }
+    }
+
+    private async clearTTSCache(): Promise<boolean> {
+        try {
+            // Google Cloud TTS 서비스에서 캐시 삭제
+            if (this.plugin.ttsService && 'clearCache' in this.plugin.ttsService) {
+                return await (this.plugin.ttsService as any).clearCache();
+            }
+            return false;
+        } catch (error) {
+            console.error('TTS 캐시 삭제 오류:', error);
+            return false;
+        }
     }
 
 } 

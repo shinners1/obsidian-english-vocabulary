@@ -19,7 +19,7 @@ export class VocabularyModal extends Modal {
     constructor(app: App, plugin: EnglishVocabularyPlugin) {
         super(app);
         this.plugin = plugin;
-        this.ttsService = TTSServiceFactory.createTTSService(plugin.settings);
+        this.ttsService = TTSServiceFactory.createTTSService(app, plugin.settings);
         this.spacedRepetitionService = new SpacedRepetitionService();
     }
 

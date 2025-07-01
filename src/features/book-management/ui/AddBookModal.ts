@@ -95,6 +95,7 @@ export class AddBookModal extends Modal {
             // 기존 단어장과 이름 중복 확인
             const existingBooks = this.plugin.databaseManager.getAllBooks();
             const isDuplicate = existingBooks.some(book => 
+                book.name && typeof book.name === 'string' && 
                 book.name.toLowerCase() === name.toLowerCase()
             );
 

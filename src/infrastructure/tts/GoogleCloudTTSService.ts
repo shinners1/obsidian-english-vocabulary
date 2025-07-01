@@ -1,6 +1,7 @@
-import { Notice } from 'obsidian';
+import { Notice, App } from 'obsidian';
 import { TTSService } from './TTSInterface';
 import { AudioManager, NetworkResourceManager } from '../../shared/AudioManager';
+import { TTSCacheManager, CacheSettings } from './TTSCacheManager';
 
 export interface GoogleCloudTTSSettings {
     enabled: boolean;
@@ -10,6 +11,7 @@ export interface GoogleCloudTTSSettings {
     speakingRate: number;
     pitch: number;
     autoPlay: boolean;
+    cacheEnabled: boolean;
 }
 
 export interface GoogleCloudTTSRequest {
@@ -36,19 +38,22 @@ export class GoogleCloudTTSService implements TTSService {
     private settings: GoogleCloudTTSSettings;
     private audioManager: AudioManager;
     private networkManager: NetworkResourceManager;
+    private cacheManager: TTSCacheManager;
 
-    constructor(settings: GoogleCloudTTSSettings) {
+    constructor(app: App, settings?: GoogleCloudTTSSettings) {
         this.settings = {
-            enabled: settings.enabled || false,
-            apiKey: settings.apiKey || '',
-            voice: settings.voice || 'en-US-Journey-F',
-            languageCode: settings.languageCode || 'en-US',
-            speakingRate: settings.speakingRate || 1.0,
-            pitch: settings.pitch || 0.0,
-            autoPlay: settings.autoPlay || false
+            enabled: settings?.enabled || false,
+            apiKey: settings?.apiKey || '',
+            voice: settings?.voice || 'en-US-Journey-F',
+            languageCode: settings?.languageCode || 'en-US',
+            speakingRate: settings?.speakingRate || 1.0,
+            pitch: settings?.pitch || 0.0,
+            autoPlay: settings?.autoPlay || false,
+            cacheEnabled: settings?.cacheEnabled !== false
         };
         this.audioManager = AudioManager.getInstance();
         this.networkManager = NetworkResourceManager.getInstance();
+        this.cacheManager = new TTSCacheManager(app);
     }
 
     async speakText(text: string): Promise<void> {
@@ -70,7 +75,39 @@ export class GoogleCloudTTSService implements TTSService {
         try {
             this.stopSpeaking();
 
-            const audioData = await this.callGoogleCloudAPI(text);
+            let audioData: string;
+            
+            // 캐시 확인 (캐시가 활성화된 경우)
+            if (this.settings.cacheEnabled) {
+                const cacheSettings: CacheSettings = {
+                    languageCode: this.settings.languageCode,
+                    voice: this.settings.voice,
+                    speakingRate: this.settings.speakingRate,
+                    pitch: this.settings.pitch
+                };
+                
+                const cachedAudio = await this.cacheManager.getCachedAudio(text, cacheSettings);
+                if (cachedAudio) {
+                    await this.playAudioBuffer(cachedAudio);
+                    return;
+                }
+            }
+
+            // 캐시에 없으면 API 호출
+            audioData = await this.callGoogleCloudAPI(text);
+            
+            // 캐시에 저장 (캐시가 활성화된 경우)
+            if (this.settings.cacheEnabled) {
+                const cacheSettings: CacheSettings = {
+                    languageCode: this.settings.languageCode,
+                    voice: this.settings.voice,
+                    speakingRate: this.settings.speakingRate,
+                    pitch: this.settings.pitch
+                };
+                
+                await this.cacheManager.setCachedAudio(text, cacheSettings, audioData);
+            }
+            
             await this.playAudioData(audioData);
 
         } catch (error) {
@@ -229,6 +266,52 @@ export class GoogleCloudTTSService implements TTSService {
         });
     }
 
+    private async playAudioBuffer(audioBuffer: ArrayBuffer): Promise<void> {
+        return new Promise((resolve, reject) => {
+            try {
+                // ArrayBuffer를 Blob으로 변환
+                const audioBlob = new Blob([audioBuffer], { type: 'audio/mp3' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                const audio = this.audioManager.createAudio(audioUrl);
+
+                const cleanup = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    this.audioManager.releaseAudio(audio);
+                };
+
+                audio.onended = () => {
+                    cleanup();
+                    resolve();
+                };
+
+                audio.onerror = () => {
+                    cleanup();
+                    reject(new Error('캐시된 오디오 재생 중 오류가 발생했습니다.'));
+                };
+
+                audio.onloadeddata = () => {
+                    audio.play().catch(error => {
+                        console.error('캐시된 오디오 재생 실패:', error);
+                        cleanup();
+                        reject(error);
+                    });
+                };
+
+                // 타임아웃 설정 (30초)
+                setTimeout(() => {
+                    if (!audio.ended && !audio.paused) {
+                        cleanup();
+                        reject(new Error('캐시된 오디오 재생 시간 초과'));
+                    }
+                }, 30000);
+
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
     private base64ToBlob(base64: string, mimeType: string): Blob {
         const byteCharacters = atob(base64);
         const byteNumbers = new Array(byteCharacters.length);
@@ -325,6 +408,18 @@ export class GoogleCloudTTSService implements TTSService {
 
     destroy(): void {
         this.stopSpeaking();
-        this.audioElement = null;
+    }
+
+    // 캐시 관리 메서드들
+    async getCacheInfo() {
+        return await this.cacheManager.getCacheInfo();
+    }
+
+    async clearCache(): Promise<boolean> {
+        return await this.cacheManager.clearCache();
+    }
+
+    updateCacheFolder(vocabularyFolderPath: string): void {
+        this.cacheManager.updateCacheFolder(vocabularyFolderPath);
     }
 }

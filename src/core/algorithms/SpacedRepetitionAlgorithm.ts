@@ -19,6 +19,11 @@ export interface SRSSettings {
     minimumEFactor: number;     // SM-2 최소 E-Factor (1.3)
     maximumInterval: number;    // Maximum interval in days (36525 = ~100 years)
     
+    // Initial Review Intervals (first successful review)
+    hardInterval: number;       // Interval after hard response (1 day)
+    goodInterval: number;       // Interval after good response (2 days)
+    easyInterval: number;       // Interval after easy response (3 days)
+    
     // Load Balancing Settings
     loadBalance: boolean;       // Enable review load balancing
     maxFuzzingDays: number;     // Maximum fuzzing for load balancing (3)
@@ -36,6 +41,11 @@ export const DEFAULT_SRS_SETTINGS: SRSSettings = {
     initialEFactor: 2.5,        // SM-2 표준 초기 E-Factor
     minimumEFactor: 1.3,        // SM-2 표준 최소 E-Factor
     maximumInterval: 36525,     // ~100년
+    
+    // Initial Review Intervals (첫 번째 성공적인 복습 후 간격)
+    hardInterval: 1,            // Hard: 1일 후
+    goodInterval: 2,            // Good: 2일 후  
+    easyInterval: 3,            // Easy: 3일 후
     
     // Load Balancing Settings
     loadBalance: true,
@@ -121,13 +131,19 @@ export class SpacedRepetitionAlgorithm {
         let newInterval: number;
         
         if (q < 2) { // hard (q = 1)
-            // hard 응답 시 즉시 복습 (1일 후)
-            newInterval = 1;
+            // hard 응답 시 설정된 간격으로 복습
+            newInterval = this.settings.hardInterval;
         } else {
-            // good 또는 easy 응답 시 SM-2 간격 공식 적용
+            // good 또는 easy 응답 시 초기 간격 설정
             if (newRepetition === 1) {
-                newInterval = 1;
+                // 첫 번째 성공적인 복습 후 간격
+                if (q === 2) { // good
+                    newInterval = this.settings.goodInterval;
+                } else { // easy (q === 3)
+                    newInterval = this.settings.easyInterval;
+                }
             } else if (newRepetition === 2) {
+                // 두 번째 성공적인 복습 후 간격 (기존 SM-2 유지)
                 newInterval = 6;
             } else {
                 // n >= 3: I_n = I_(n-1) * EF_new

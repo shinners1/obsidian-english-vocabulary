@@ -94,15 +94,15 @@ The plugin intelligently distributes reviews across days to prevent overwhelming
 
 ## 🏗️ Architecture
 
-Built with Clean Architecture principles for maintainability and extensibility:
-
 ```
 src/
-├── core/               # Business logic & algorithms
-├── features/           # Feature modules
-├── infrastructure/     # External services
-└── shared/            # Common utilities
+├── core/ # Business logic & algorithms
+├── features/ # Feature modules
+├── infrastructure/ # External services
+└── shared/ # Common utilities
 ```
+
+Built with Clean Architecture principles for maintainability and extensibility:
 
 ## 🔒 Privacy & Security
 
@@ -177,3 +177,183 @@ If you find this plugin helpful, please consider:
 - 💝 [Buy Me a Coffee](https://buymeacoffee.com/obsidianvop)
 - 📢 Sharing with other English learners
 
+---
+
+# Obsidian 영어 단어 학습 플러그인
+
+간격 반복과 플래시카드를 사용하여 영어 단어를 효과적으로 암기할 수 있도록 도와주는 AI 기반 Obsidian 영어 단어 학습 플러그인입니다.
+
+## ✨ 주요 기능
+
+### 🧠 스마트 학습 시스템
+- **SM-2 간격 반복 알고리즘**: 장기 기억 보존을 위한 과학적으로 입증된 방법
+- **AI 기반 콘텐츠**: LLM 서비스(OpenAI, Anthropic, Google AI)를 사용한 자동 예문 및 정의 생성
+- **3단계 평가**: 개인화된 학습 곡선을 위한 어려움/보통/쉬움 평가 시스템
+
+### 🎯 학습 도구
+- **플래시카드 인터페이스**: 2단계 공개 방식의 Anki 스타일 학습 경험
+- **TTS 발음**: 정확한 발음을 위한 다양한 텍스트 음성 변환 제공업체
+- **다중 단어장**: 주제, 난이도 또는 개인 취향별로 단어 정리
+- **진도 추적**: 연속 학습일, 성공률 및 학습 분석을 포함한 상세 통계
+
+### 🔧 기술적 특징
+- **마크다운 기반 저장**: 모든 단어 데이터를 읽기 가능한 마크다운 파일로 저장
+- **클린 아키텍처**: SOLID 원칙을 따르는 잘 구조화되고 유지보수 가능한 코드베이스
+- **로드 밸런싱**: 과도한 학습량을 방지하기 위해 복습 세션을 균등하게 분배
+- **보안 API 저장**: 모든 API 키는 암호화되어 저장
+
+## 🚀 빠른 시작
+
+1. Obsidian 커뮤니티 플러그인에서 플러그인 설치
+2. 설정에서 AI API 키 구성 (선택사항이지만 권장)
+3. 첫 번째 단어장 생성 또는 기본 단어장 사용
+4. 수동으로 단어 추가 또는 AI가 콘텐츠 생성하도록 설정
+5. 플래시카드 시스템으로 학습 시작!
+
+## 📖 사용 가이드
+
+### 기본 학습 흐름
+1. **단어 추가**: "단어 추가"를 클릭하여 단어장에 새 단어 추가
+2. **학습 모드**: 새로운 단어를 보기 위한 학습 세션 시작
+3. **복습 모드**: SM-2 알고리즘이 자동으로 복습 일정 계획
+4. **진도 추적**: 학습 통계 및 연속 기록 모니터링
+
+### 사용 가능한 명령어
+- `English Vocabulary: Start Learning` - 플래시카드 학습 세션 시작
+- `English Vocabulary: View Vocabulary Books` - 단어 모음 관리
+- `English Vocabulary: Add Words` - 현재 단어장에 새 단어 추가
+- `English Vocabulary: Review Statistics` - 학습 진도 보기
+- `English Vocabulary: Settings` - 플러그인 옵션 구성
+
+### 학습 인터페이스
+1. **첫 번째 단계**: 영어 단어, 발음, 유사 단어 및 예문 표시
+2. **두 번째 단계**: 모국어 의미 및 번역된 예문 공개
+3. **평가**: 향후 복습을 최적화하기 위해 기억 정도를 어려움/보통/쉬움으로 평가
+
+## ⚙️ 설정
+
+### AI 통합 (선택사항이지만 권장)
+향상된 학습 경험을 위한 AI 서비스 구성:
+
+- **OpenAI**: 고품질 콘텐츠 생성을 위한 GPT 모델
+- **Anthropic Claude**: 미묘한 이해력을 가진 고급 AI
+- **Google AI**: 다양한 콘텐츠를 위한 Gemini 모델
+
+### TTS 설정
+- **음성 선택**: 사용 가능한 시스템 음성 중에서 선택
+- **발화 속도**: 발음 속도 조정 (0.5 - 2.0)
+- **제공업체 옵션**: 
+  - 브라우저 TTS (내장)
+  - Google Cloud TTS (API 필요)
+  - Chatterbox TTS
+
+### 학습 설정
+- **일일 목표**: 하루에 학습할 목표 단어 수 설정
+- **복습 배치 크기**: 복습 세션당 카드 수
+- **자동 오디오 재생**: 자동 발음 활성화
+
+## 🧪 간격 반복 알고리즘
+
+이 플러그인은 간격 반복의 표준인 **SM-2 (SuperMemo-2) 알고리즘**을 구현합니다:
+
+### 수학적 기초
+- **E-Factor 업데이트**: `EF_new = EF_old + (0.1 - (3-q)×(0.08 + (3-q)×0.02))`
+- **복습 간격**: 
+  - 첫 번째 복습: 1일
+  - 두 번째 복습: 6일
+  - 이후: `I_n = I_(n-1) × EF_new`
+- **품질 점수**: 
+  - 어려움 (1): 어려운 기억, 간격 재설정
+  - 보통 (2): 노력을 통한 성공적인 기억
+  - 쉬움 (3): 완벽한 기억
+
+### 로드 밸런싱
+플러그인은 과도한 학습 세션을 방지하기 위해 복습을 여러 날에 걸쳐 지능적으로 분배합니다:
+- 짧은 간격 (≤21일): ±1일 퍼징
+- 중간 간격 (≤180일): ±5% 퍼징
+- 긴 간격 (>180일): ±2.5% 퍼징
+
+## 🏗️ 아키텍처
+
+유지보수성과 확장성을 위한 클린 아키텍처 원칙으로 구축:
+
+```
+src/
+├── core/ # 비즈니스 로직 및 알고리즘
+├── features/ # 기능 모듈
+├── infrastructure/ # 외부 서비스
+└── shared/ # 공통 유틸리티
+```
+
+## 🔒 개인정보 보호 및 보안
+
+- **로컬 저장**: 모든 단어 데이터가 볼트에 로컬로 저장
+- **암호화된 API 키**: 민감한 자격 증명이 암호화됨
+- **텔레메트리 없음**: 사용 데이터가 수집되거나 전송되지 않음
+- **오픈 소스**: 검토를 위한 전체 소스 코드 제공
+
+## 📊 데이터 형식
+
+단어는 프론트매터가 있는 마크다운 파일에 저장됩니다:
+
+```markdown
+---
+bookId: default
+name: "내 단어장"
+wordCount: 42
+---
+
+### word
+
+**pronunciation:** /wɜːrd/
+**meanings:**
+- 언어의 단위
+- 약속이나 보증
+
+**examples:**
+- Keep your word. (약속을 지켜라)
+- A word to the wise is sufficient. (현명한 자에게는 한 마디면 충분하다)
+```
+
+## 🤝 기여하기
+
+기여를 환영합니다! Pull Request를 자유롭게 제출해 주세요. 주요 변경사항의 경우, 먼저 이슈를 열어 변경하고자 하는 내용에 대해 논의해 주세요.
+
+### 개발 설정
+```bash
+# 저장소 복제
+git clone https://github.com/shinners1/obsidian-english-vocabulary
+
+# 의존성 설치
+npm install
+
+# 플러그인 빌드
+npm run build
+
+# 개발 모드 실행
+npm run dev
+```
+
+## 📄 라이선스
+
+MIT 라이선스 - 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요
+
+## 🙏 감사의 말
+
+- Piotr Wozniak(SuperMemo)의 SM-2 알고리즘
+- Anki의 간격 반복 시스템에서 영감을 받음
+- 놀라운 Obsidian 커뮤니티를 위해 제작
+- 모든 기여자와 테스터에게 특별한 감사
+
+## 📮 지원
+
+- **이슈**: [GitHub Issues](https://github.com/shinners1/obsidian-english-vocabulary/issues)
+- **토론**: [GitHub Discussions](https://github.com/shinners1/obsidian-english-vocabulary/discussions)
+- **이메일**: obsidian.voca@gmail.com
+
+---
+
+이 플러그인이 도움이 되었다면 다음을 고려해 주세요:
+- ⭐ 저장소에 별 주기
+- 💝 [커피 한 잔 사주기](https://buymeacoffee.com/obsidianvop)
+- 📢 다른 영어 학습자들과 공유하기

@@ -87,7 +87,11 @@ export class ObsidianVocabularyRepository implements IVocabularyRepository {
         }
 
         // 정렬 (기본: 단어 알파벳 순)
-        cards.sort((a, b) => a.word.localeCompare(b.word));
+        cards.sort((a, b) => {
+            const wordA = typeof a.word === 'string' ? a.word : '';
+            const wordB = typeof b.word === 'string' ? b.word : '';
+            return wordA.localeCompare(wordB);
+        });
 
         // 페이징
         const limit = options.limit || cards.length;

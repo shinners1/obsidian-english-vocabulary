@@ -70,10 +70,9 @@ export class VocabularyReviewModal extends Modal {
         if (!this.showAnswer) {
             if (currentWord.similarWords.length > 0) {
                 const similarEl = cardEl.createEl('div', { cls: 'similar-words' });
-                similarEl.createEl('h3', { text: '유사한 단어들:' });
-                const similarList = similarEl.createEl('ul');
-                currentWord.similarWords.forEach(word => {
-                    similarList.createEl('li', { text: word });
+                similarEl.createEl('p', { 
+                    cls: 'similar-words-inline',
+                    text: `유사한 단어들: ${currentWord.similarWords.join(', ')}`
                 });
             }
 

@@ -200,10 +200,9 @@ export class VocabularyModal extends Modal {
         // 유사한 단어들
         if (currentCard.similarWords && currentCard.similarWords.length > 0) {
             const similarSection = cardContainer.createEl('div', { cls: 'similar-words-section' });
-            similarSection.createEl('h3', { text: '유사한 단어들:' });
-            const similarList = similarSection.createEl('ul', { cls: 'similar-words-list' });
-            currentCard.similarWords.forEach(word => {
-                similarList.createEl('li', { text: word });
+            const similarWordsText = similarSection.createEl('p', { 
+                cls: 'similar-words-inline',
+                text: `유사한 단어들: ${currentCard.similarWords.join(', ')}`
             });
         }
 
@@ -226,7 +225,7 @@ export class VocabularyModal extends Modal {
                 });
                 examplePlayButton.textContent = '🔊';
                 examplePlayButton.addEventListener('click', () => {
-                    this.ttsService.speakExample(example.english);
+                    this.ttsService.speakExample(example.english, currentCard.word);
                 });
                 
                 // 한글 번역 (정답 확인 후에만 표시)
@@ -254,7 +253,7 @@ export class VocabularyModal extends Modal {
             });
             examplePlayButton.textContent = '🔊';
             examplePlayButton.addEventListener('click', () => {
-                this.ttsService.speakExample(`This is an example sentence with the word "${currentCard.word}".`);
+                this.ttsService.speakExample(`This is an example sentence with the word "${currentCard.word}".`, currentCard.word);
             });
             
             // 한글 번역 (정답 확인 후에만 표시)

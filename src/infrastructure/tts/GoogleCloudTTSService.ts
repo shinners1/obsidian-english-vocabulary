@@ -56,7 +56,7 @@ export class GoogleCloudTTSService implements TTSService {
         this.cacheManager = new TTSCacheManager(app);
     }
 
-    async speakText(text: string): Promise<void> {
+    async speakText(text: string, word?: string): Promise<void> {
         if (!this.settings.enabled) {
             new Notice('TTS 기능이 비활성화되어 있습니다.');
             return;
@@ -86,7 +86,7 @@ export class GoogleCloudTTSService implements TTSService {
                     pitch: this.settings.pitch
                 };
                 
-                const cachedAudio = await this.cacheManager.getCachedAudio(text, cacheSettings);
+                const cachedAudio = await this.cacheManager.getCachedAudio(text, cacheSettings, word);
                 if (cachedAudio) {
                     await this.playAudioBuffer(cachedAudio);
                     return;
@@ -105,7 +105,7 @@ export class GoogleCloudTTSService implements TTSService {
                     pitch: this.settings.pitch
                 };
                 
-                await this.cacheManager.setCachedAudio(text, cacheSettings, audioData);
+                await this.cacheManager.setCachedAudio(text, cacheSettings, audioData, word);
             }
             
             await this.playAudioData(audioData);
@@ -122,16 +122,18 @@ export class GoogleCloudTTSService implements TTSService {
             return;
         }
 
+        // 단어의 경우 word 파라미터를 전달하지 않음 (단순 단어 캐시)
         await this.speakText(word);
     }
 
-    async speakExample(example: string): Promise<void> {
+    async speakExample(example: string, word?: string): Promise<void> {
         if (!example || example.trim().length === 0) {
             console.warn('TTS: 빈 예문입니다.');
             return;
         }
 
-        await this.speakText(example);
+        // 예문의 경우 연관된 단어 정보를 전달하여 "단어_예문" 형식으로 캐시
+        await this.speakText(example, word);
     }
 
     private async callGoogleCloudAPI(text: string): Promise<string> {

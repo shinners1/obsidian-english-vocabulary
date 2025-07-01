@@ -45,7 +45,7 @@ export class TTSCacheManager {
         }
     }
 
-    private generateCacheKey(text: string, settings: CacheSettings): string {
+    private generateCacheKey(text: string, settings: CacheSettings, word?: string): string {
         const keyData = {
             text: text.trim().toLowerCase(),
             languageCode: settings.languageCode,
@@ -59,22 +59,29 @@ export class TTSCacheManager {
         const hash = this.simpleHash(keyString);
         
         // 텍스트에서 단어 추출 (파일명에 사용할 수 있도록 정리)
-        const cleanText = this.extractWordForFilename(text);
+        const cleanText = this.extractWordForFilename(text, word);
         
         // 파일명: 단어_해시.mp3 형식
         return `${cleanText}_${hash}.mp3`;
     }
 
-    private extractWordForFilename(text: string): string {
+    private extractWordForFilename(text: string, word?: string): string {
         // 텍스트를 파일명에 사용할 수 있도록 정리
         let cleanText = text.trim().toLowerCase();
         
         // 텍스트 타입 감지
         const isLongText = cleanText.length > 50 || cleanText.includes('.') || cleanText.includes(',');
         
-        if (isLongText) {
+        if (isLongText && word) {
+            // 예문의 경우: "영단어_예문시작부분" 형식
+            const cleanWord = this.sanitizeForFilename(word);
+            const words = cleanText.split(/[\s\.,!?;:]+/).filter(w => w.length > 0);
+            const examplePart = words.slice(0, 3).join('-');
+            const cleanExample = this.sanitizeForFilename(examplePart);
+            cleanText = `${cleanWord}_${cleanExample}`;
+        } else if (isLongText) {
             // 긴 텍스트(예문)의 경우: 첫 2-3개 단어 추출
-            const words = cleanText.split(/[\s\.,!?;:]+/).filter(word => word.length > 0);
+            const words = cleanText.split(/[\s\.,!?;:]+/).filter(w => w.length > 0);
             const significantWords = words.slice(0, 3).join('_');
             cleanText = significantWords;
         } else {
@@ -83,23 +90,14 @@ export class TTSCacheManager {
             cleanText = firstWord;
         }
         
-        // 파일명에 사용할 수 없는 문자들 제거
-        cleanText = cleanText.replace(/[<>:"/\\|?*]/g, '');
+        // 파일명 정리
+        cleanText = this.sanitizeForFilename(cleanText);
         
-        // 영문자, 숫자, 하이픈, 언더스코어만 허용
-        cleanText = cleanText.replace(/[^a-z0-9\-_]/g, '');
-        
-        // 연속된 언더스코어 제거
-        cleanText = cleanText.replace(/_+/g, '_');
-        
-        // 시작과 끝의 언더스코어 제거
-        cleanText = cleanText.replace(/^_+|_+$/g, '');
-        
-        // 길이 제한 (최대 30자)
-        if (cleanText.length > 30) {
-            cleanText = cleanText.substring(0, 30);
-            // 끝에 언더스코어가 있으면 제거
-            cleanText = cleanText.replace(/_+$/, '');
+        // 길이 제한 (최대 50자로 확장 - 영단어_예문 형식을 위해)
+        if (cleanText.length > 50) {
+            cleanText = cleanText.substring(0, 50);
+            // 끝에 언더스코어나 하이픈이 있으면 제거
+            cleanText = cleanText.replace(/[-_]+$/, '');
         }
         
         // 빈 문자열이면 기본값 사용
@@ -108,6 +106,22 @@ export class TTSCacheManager {
         }
         
         return cleanText;
+    }
+
+    private sanitizeForFilename(text: string): string {
+        // 파일명에 사용할 수 없는 문자들 제거
+        let cleaned = text.replace(/[<>:"/\\|?*]/g, '');
+        
+        // 영문자, 숫자, 하이픈, 언더스코어만 허용
+        cleaned = cleaned.replace(/[^a-z0-9\-_]/g, '');
+        
+        // 연속된 언더스코어나 하이픈 제거
+        cleaned = cleaned.replace(/[-_]+/g, '_');
+        
+        // 시작과 끝의 언더스코어 제거
+        cleaned = cleaned.replace(/^_+|_+$/g, '');
+        
+        return cleaned;
     }
 
     private simpleHash(str: string): string {
@@ -127,9 +141,9 @@ export class TTSCacheManager {
         return normalizePath(`${this.cacheFolder}/${cacheKey}`);
     }
 
-    async getCachedAudio(text: string, settings: CacheSettings): Promise<ArrayBuffer | null> {
+    async getCachedAudio(text: string, settings: CacheSettings, word?: string): Promise<ArrayBuffer | null> {
         try {
-            const cacheKey = this.generateCacheKey(text, settings);
+            const cacheKey = this.generateCacheKey(text, settings, word);
             const filePath = this.getCacheFilePath(cacheKey);
             
             const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -146,11 +160,11 @@ export class TTSCacheManager {
         }
     }
 
-    async setCachedAudio(text: string, settings: CacheSettings, base64Audio: string): Promise<void> {
+    async setCachedAudio(text: string, settings: CacheSettings, base64Audio: string, word?: string): Promise<void> {
         try {
             await this.initializeCacheFolder();
             
-            const cacheKey = this.generateCacheKey(text, settings);
+            const cacheKey = this.generateCacheKey(text, settings, word);
             const filePath = this.getCacheFilePath(cacheKey);
             
             // Base64를 ArrayBuffer로 변환

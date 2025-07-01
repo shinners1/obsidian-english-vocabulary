@@ -2,7 +2,7 @@
 export interface TTSService {
     speakText(text: string): Promise<void>;
     speakWord(word: string): Promise<void>;
-    speakExample(example: string): Promise<void>;
+    speakExample(example: string, word?: string): Promise<void>;
     stopSpeaking(): void;
     isPaused(): boolean;
     resume(): void;

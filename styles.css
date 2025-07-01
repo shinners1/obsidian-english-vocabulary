@@ -32,7 +32,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 1px;
 }
 
 .word-play-button {
@@ -567,7 +567,7 @@
 .vocabulary-card {
   background: var(--background-secondary);
   border-radius: 12px;
-  padding: 30px;
+  padding: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   position: relative;
 }
@@ -1259,27 +1259,27 @@
   font-size: 36px;
   font-weight: bold;
   color: var(--text-accent);
-  margin-bottom: 25px;
+  margin-bottom: 15px;
   text-transform: capitalize;
 }
 
 .pronunciation {
   color: var(--text-muted);
   font-size: 0.6em;
-  font-weight: normal;
+  font-weight: nornmal;
   margin-left: 8px;
 }
 
 /* 유사한 단어들, 예문들 섹션 */
 .similar-words-section,
 .examples-section {
-  margin-bottom: 25px;
+  margin-bottom: 15px;
 }
 
 .similar-words-section h3,
 .examples-section h3 {
   color: var(--text-muted);
-  font-size: 18px;
+  font-size: 15px;
   margin-bottom: 10px;
   border-bottom: 2px solid var(--background-modifier-border);
   padding-bottom: 5px;
@@ -1299,6 +1299,17 @@
   border-radius: 20px;
   font-size: 14px;
   color: var(--text-normal);
+}
+
+/* 유사한 단어들 인라인 표시 */
+.similar-words-inline {
+  color: var(--text-normal);
+  font-size: 16px;
+  margin: 0;
+  padding: 8px 0px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  font-weight: 500;
 }
 
 /* 예문 컨테이너 */

@@ -92,13 +92,18 @@ export class VocabularyDatabaseManager {
 
     // Book을 MD 파일로 저장
     private async saveBookToFile(book: Book): Promise<void> {
-        const fileName = `${book.name.replace(/[<>:"/\\|?*]/g, '_')}.md`;
+        const bookName = typeof book.name === 'string' ? book.name : 'untitled';
+        const fileName = `${bookName.replace(/[<>:"/\\|?*]/g, '_')}.md`;
         const filePath = normalizePath(`${this.vocabularyFolderPath}/${fileName}`);
         
         // 해당 book의 단어들 가져오기
         const bookWords = Array.from(this.words.values())
             .filter(word => word.bookId === book.id)
-            .sort((a, b) => a.word.localeCompare(b.word));
+            .sort((a, b) => {
+                const wordA = typeof a.word === 'string' ? a.word : '';
+                const wordB = typeof b.word === 'string' ? b.word : '';
+                return wordA.localeCompare(wordB);
+            });
 
         // YAML frontmatter 생성
         const frontmatter = [
@@ -538,7 +543,12 @@ export class VocabularyDatabaseManager {
         return Array.from(this.books.values()).sort((a, b) => {
             if (a.isDefault) return -1;
             if (b.isDefault) return 1;
-            return a.name.localeCompare(b.name);
+            
+            // name 속성이 문자열인지 확인하고 안전하게 비교
+            const nameA = typeof a.name === 'string' ? a.name : '';
+            const nameB = typeof b.name === 'string' ? b.name : '';
+            
+            return nameA.localeCompare(nameB);
         });
     }
 
@@ -730,14 +740,22 @@ export class VocabularyDatabaseManager {
     getAllWords(): VocabularyCard[] {
         return Array.from(this.words.values())
             .filter(word => word.bookId === this.settings.currentBookId)
-            .sort((a, b) => a.word.localeCompare(b.word));
+            .sort((a, b) => {
+                const wordA = typeof a.word === 'string' ? a.word : '';
+                const wordB = typeof b.word === 'string' ? b.word : '';
+                return wordA.localeCompare(wordB);
+            });
     }
 
     // 특정 book의 모든 단어 조회
     getWordsByBook(bookId: string): VocabularyCard[] {
         return Array.from(this.words.values())
             .filter(word => word.bookId === bookId)
-            .sort((a, b) => a.word.localeCompare(b.word));
+            .sort((a, b) => {
+                const wordA = typeof a.word === 'string' ? a.word : '';
+                const wordB = typeof b.word === 'string' ? b.word : '';
+                return wordA.localeCompare(wordB);
+            });
     }
 
     // 복습 대상 단어 조회 (현재 book)

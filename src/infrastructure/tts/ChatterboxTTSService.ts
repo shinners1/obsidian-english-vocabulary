@@ -95,12 +95,13 @@ export class ChatterboxTTSService implements TTSService {
         await this.speakText(word);
     }
 
-    async speakExample(example: string): Promise<void> {
+    async speakExample(example: string, word?: string): Promise<void> {
         if (!example || example.trim().length === 0) {
             console.warn('TTS: 빈 예문입니다.');
             return;
         }
 
+        // ChatterboxTTSService는 캐시를 지원하지 않으므로 word 파라미터는 무시
         await this.speakText(example);
     }
 

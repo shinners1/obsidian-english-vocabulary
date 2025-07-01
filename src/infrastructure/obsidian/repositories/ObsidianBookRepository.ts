@@ -46,7 +46,9 @@ export class ObsidianBookRepository implements IBookRepository {
                 
                 switch (options.sortBy) {
                     case 'name':
-                        return a.name.localeCompare(b.name) * multiplier;
+                        const nameA = typeof a.name === 'string' ? a.name : '';
+                        const nameB = typeof b.name === 'string' ? b.name : '';
+                        return nameA.localeCompare(nameB) * multiplier;
                     case 'createdAt':
                         return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * multiplier;
                     case 'updatedAt':

@@ -1,6 +1,6 @@
 // 전역 에러 처리 및 경계 관리
 
-import { Notice } from 'obsidian';
+import { Notice, requestUrl } from 'obsidian';
 
 export interface ErrorInfo {
     error: Error;
@@ -158,9 +158,9 @@ export class ErrorBoundary {
         if (error.message.includes('fetch') || error.message.includes('network')) {
             try {
                 // 간단한 네트워크 테스트
-                await fetch('https://www.google.com/favicon.ico', { 
-                    method: 'HEAD',
-                    mode: 'no-cors'
+                await requestUrl({ 
+                    url: 'https://www.google.com/favicon.ico',
+                    method: 'HEAD'
                 });
                 return true;
             } catch {

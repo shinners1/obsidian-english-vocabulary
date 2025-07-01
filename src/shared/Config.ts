@@ -234,20 +234,30 @@ export class ConfigManager {
     }
 
     private mergeConfigs(base: PluginConfig, override: Partial<PluginConfig>): PluginConfig {
-        const result = { ...base };
+        return this.deepMerge(base, override);
+    }
+
+    private deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+        const result = { ...target };
         
-        for (const [key, value] of Object.entries(override)) {
-            if (value && typeof value === 'object' && !Array.isArray(value)) {
-                result[key as keyof PluginConfig] = {
-                    ...result[key as keyof PluginConfig],
-                    ...value
-                } as any;
-            } else {
-                result[key as keyof PluginConfig] = value as any;
+        for (const key in source) {
+            if (source.hasOwnProperty(key)) {
+                const sourceValue = source[key];
+                const targetValue = result[key];
+                
+                if (this.isObject(sourceValue) && this.isObject(targetValue)) {
+                    result[key] = this.deepMerge(targetValue, sourceValue);
+                } else if (sourceValue !== undefined) {
+                    result[key] = sourceValue;
+                }
             }
         }
         
         return result;
+    }
+
+    private isObject(item: any): item is Record<string, any> {
+        return item && typeof item === 'object' && !Array.isArray(item);
     }
 
     private getNestedValue(obj: any, path: string): any {

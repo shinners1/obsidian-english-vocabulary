@@ -202,7 +202,7 @@ export class MarkdownDatabase {
     async deleteBookFile(bookId: string): Promise<void> {
         const bookFile = await this.findBookFile(bookId);
         if (bookFile) {
-            await this.app.vault.delete(bookFile);
+            await this.app.fileManager.trashFile(bookFile);
         }
     }
 

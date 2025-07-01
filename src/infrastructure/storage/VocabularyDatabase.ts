@@ -522,7 +522,7 @@ export class VocabularyDatabaseManager {
         const filePath = normalizePath(`${this.vocabularyFolderPath}/${fileName}`);
         const file = this.app.vault.getAbstractFileByPath(filePath);
         if (file instanceof TFile) {
-            await this.app.vault.delete(file);
+            await this.app.fileManager.trashFile(file);
         }
 
         // 현재 book이 삭제된 book이면 기본 book으로 변경

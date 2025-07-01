@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice, TFolder } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, TFolder, requestUrl } from 'obsidian';
 import EnglishVocabularyPlugin from '../../../main';
 import { LLMService } from '../../../infrastructure/llm/LLMService';
 import { encryptApiKey, decryptApiKey, maskApiKey } from '../../../utils';
@@ -981,7 +981,8 @@ export class VocabularySettingTab extends PluginSettingTab {
                 }
             };
 
-            const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+            const response = await requestUrl({
+                url: `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -989,13 +990,13 @@ export class VocabularySettingTab extends PluginSettingTab {
                 body: JSON.stringify(requestBody)
             });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
+            if (response.status >= 400) {
+                const errorData = JSON.parse(response.text || '{}');
                 const detailedError = this.getDetailedGoogleCloudError(response.status, errorData);
                 throw new Error(detailedError);
             }
 
-            const data = await response.json();
+            const data = JSON.parse(response.text);
             const audioBlob = this.base64ToBlob(data.audioContent, 'audio/mp3');
             const audioUrl = URL.createObjectURL(audioBlob);
             
@@ -1050,7 +1051,8 @@ export class VocabularySettingTab extends PluginSettingTab {
                 return;
             }
 
-            const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+            const response = await requestUrl({
+                url: `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1067,10 +1069,10 @@ export class VocabularySettingTab extends PluginSettingTab {
                 })
             });
 
-            if (response.ok) {
+            if (response.status < 400) {
                 new Notice('✅ Google Cloud TTS API 연결 성공!');
             } else {
-                const errorData = await response.json().catch(() => ({}));
+                const errorData = JSON.parse(response.text || '{}');
                 const detailedError = this.getDetailedGoogleCloudError(response.status, errorData);
                 new Notice(`❌ ${detailedError}`);
             }

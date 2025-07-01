@@ -2,7 +2,7 @@ import { VocabularySettings } from '../../features/settings/ui/settings';
 import { WordData } from '../../VocabularyCard';
 import { decryptApiKey } from '../../utils';
 import { retryAPICall, APIRetryPolicy } from '../../shared/RetryPolicy';
-import axios from 'axios';
+import { requestUrl } from 'obsidian';
 
 export interface LLMResponse {
     success: boolean;
@@ -318,7 +318,8 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
     private async callOpenAI(prompt: string): Promise<LLMResponse> {
         try {
             const response = await retryAPICall(async () => {
-                    return fetch('https://api.openai.com/v1/chat/completions', {
+                    return requestUrl({
+                        url: 'https://api.openai.com/v1/chat/completions',
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -338,12 +339,12 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
                     });
                 });
 
-            if (!response.ok) {
-                const errorData = await response.json();
+            if (response.status >= 400) {
+                const errorData = JSON.parse(response.text);
                 return { success: false, error: errorData.error?.message || 'OpenAI API 호출 실패' };
             }
 
-            const data = await response.json();
+            const data = JSON.parse(response.text);
             const content = data.choices[0]?.message?.content;
             
             if (!content) {
@@ -358,11 +359,17 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
 
     private async callAnthropic(prompt: string): Promise<LLMResponse> {
         // Node.js 환경에서만 동작하도록 처리
-        if (typeof window === 'undefined' || (typeof window !== 'undefined' && (window as any)?.process?.type === 'renderer')) {
+        if (typeof window === 'undefined' || (typeof window !== 'undefined' && 'process' in window && (window as Window & { process?: { type?: string } }).process?.type === 'renderer')) {
             try {
-                const response = await axios.post(
-                    'https://api.anthropic.com/v1/messages',
-                    {
+                const response = await requestUrl({
+                    url: 'https://api.anthropic.com/v1/messages',
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': this.getCurrentApiKey(),
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
                         model: this.settings.llmModel,
                         max_tokens: 30000,
                         messages: [
@@ -371,16 +378,16 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
                                 content: prompt
                             }
                         ]
-                    },
-                    {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-api-key': this.getCurrentApiKey(),
-                            'anthropic-version': '2023-06-01'
-                        }
-                    }
-                );
-                const content = response.data.content[0]?.text;
+                    })
+                });
+                
+                if (response.status >= 400) {
+                    const errorData = JSON.parse(response.text);
+                    return { success: false, error: errorData.error?.message || 'Anthropic API 호출 실패' };
+                }
+                
+                const data = JSON.parse(response.text);
+                const content = data.content[0]?.text;
                 if (!content) {
                     return { success: false, error: '응답 내용이 없습니다.' };
                 }
@@ -400,7 +407,8 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
     private async callGoogle(prompt: string): Promise<LLMResponse> {
         try {
             const response = await retryAPICall(async () => {
-                    return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.settings.llmModel}:generateContent?key=${this.getCurrentApiKey()}`, {
+                    return requestUrl({
+                        url: `https://generativelanguage.googleapis.com/v1beta/models/${this.settings.llmModel}:generateContent?key=${this.getCurrentApiKey()}`,
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -423,12 +431,12 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
                     });
                 });
 
-            if (!response.ok) {
-                const errorData = await response.json();
+            if (response.status >= 400) {
+                const errorData = JSON.parse(response.text);
                 return { success: false, error: errorData.error?.message || 'Google API 호출 실패' };
             }
 
-            const data = await response.json();
+            const data = JSON.parse(response.text);
             const content = data.candidates[0]?.content?.parts[0]?.text;
             
             if (!content) {

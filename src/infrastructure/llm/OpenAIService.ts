@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { requestUrl } from 'obsidian';
 import { ILLMService, LLMConfig, LLMWordDetail } from '../../core/ports/services/ILLMService';
 import { ApiResponse } from '../../shared/lib/types';
 import { WordData } from '../../core/entities/Vocabulary';
@@ -108,9 +108,17 @@ export class OpenAIService implements ILLMService {
     }
 
     handleError(error: any): string {
-        if (error.response) {
-            const status = error.response.status;
-            const data = error.response.data;
+        if (error.status) {
+            // requestUrl error with status
+            const status = error.status;
+            let errorMessage = '알 수 없는 오류';
+            
+            try {
+                const errorData = JSON.parse(error.text || '{}');
+                errorMessage = errorData.error?.message || errorMessage;
+            } catch (e) {
+                // JSON parsing failed, use default message
+            }
             
             switch (status) {
                 case 401:
@@ -120,9 +128,9 @@ export class OpenAIService implements ILLMService {
                 case 500:
                     return 'OpenAI 서버 내부 오류가 발생했습니다.';
                 default:
-                    return `OpenAI API 오류 (${status}): ${data?.error?.message || '알 수 없는 오류'}`;
+                    return `OpenAI API 오류 (${status}): ${errorMessage}`;
             }
-        } else if (error.request) {
+        } else if (error.message && error.message.includes('network')) {
             return 'OpenAI API 서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.';
         } else {
             return error.message || '알 수 없는 오류가 발생했습니다.';
@@ -158,9 +166,14 @@ export class OpenAIService implements ILLMService {
         try {
             this.requestCount++;
             
-            const response = await axios.post(
-                'https://api.openai.com/v1/chat/completions',
-                {
+            const response = await requestUrl({
+                url: 'https://api.openai.com/v1/chat/completions',
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.config.apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
                     model: this.config.model || 'gpt-3.5-turbo',
                     messages: [
                         {
@@ -174,17 +187,16 @@ export class OpenAIService implements ILLMService {
                     ],
                     max_tokens: this.config.maxTokens || 2000,
                     temperature: this.config.temperature || 0.7
-                },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${this.config.apiKey}`,
-                        'Content-Type': 'application/json'
-                    },
-                    timeout: 30000
-                }
-            );
+                })
+            });
 
-            const content = response.data.choices[0]?.message?.content;
+            if (response.status >= 400) {
+                const errorData = JSON.parse(response.text);
+                return { success: false, error: errorData.error?.message || 'OpenAI API 호출 실패' };
+            }
+
+            const data = JSON.parse(response.text);
+            const content = data.choices[0]?.message?.content;
             if (!content) {
                 return { success: false, error: 'OpenAI API에서 응답을 받지 못했습니다.' };
             }

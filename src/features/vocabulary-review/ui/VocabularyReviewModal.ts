@@ -57,7 +57,12 @@ export class VocabularyReviewModal extends Modal {
         
         const wordEl = cardEl.createEl('h1', { cls: 'review-word' });
         if (currentWord.pronunciation && currentWord.pronunciation.trim()) {
-            wordEl.innerHTML = `${currentWord.word} <span class="pronunciation">[${currentWord.pronunciation}]</span>`;
+            wordEl.textContent = currentWord.word;
+            wordEl.appendText(' ');
+            wordEl.createEl('span', { 
+                text: `[${currentWord.pronunciation}]`,
+                cls: 'pronunciation'
+            });
         } else {
             wordEl.textContent = currentWord.word;
         }

@@ -12,11 +12,13 @@ export class AddWordsModal extends Modal {
     isProcessing = false;
     private bookSelect: HTMLSelectElement;
     private cancellationTokenSource: CancellationTokenSource | null = null;
+    private selectedBookId: string;
 
-    constructor(app: App, plugin: EnglishVocabularyPlugin) {
+    constructor(app: App, plugin: EnglishVocabularyPlugin, selectedBookId?: string) {
         super(app);
         this.plugin = plugin;
         this.wordService = new WordService();
+        this.selectedBookId = selectedBookId || 'default';
     }
 
     async onOpen() {
@@ -45,6 +47,7 @@ export class AddWordsModal extends Modal {
         
         this.bookSelect.addEventListener('change', (e) => {
             const selectedBookId = (e.target as HTMLSelectElement).value;
+            this.selectedBookId = selectedBookId;
             this.plugin.databaseManager.setCurrentBook(selectedBookId);
         });
 
@@ -85,7 +88,7 @@ export class AddWordsModal extends Modal {
             text: '단어 추가',
             cls: 'add-button primary'
         });
-        addButton.addEventListener('click', () => this.addWords(textarea.value, this.bookSelect.value));
+        addButton.addEventListener('click', () => this.addWords(textarea.value, this.selectedBookId));
 
         const cancelButton = buttonSection.createEl('button', { 
             text: '취소',
@@ -100,8 +103,7 @@ export class AddWordsModal extends Modal {
         });
 
         // 진행 상황 표시 영역
-        const progressSection = contentEl.createEl('div', { cls: 'progress-section' });
-        progressSection.style.display = 'none';
+        const progressSection = contentEl.createEl('div', { cls: 'progress-section display-none' });
         
         const progressText = progressSection.createEl('p', { 
             text: '단어를 추가하는 중...',
@@ -112,13 +114,12 @@ export class AddWordsModal extends Modal {
         const progressFill = progressBar.createEl('div', { cls: 'progress-fill' });
 
         // 결과 표시 영역
-        const resultSection = contentEl.createEl('div', { cls: 'result-section' });
-        resultSection.style.display = 'none';
+        const resultSection = contentEl.createEl('div', { cls: 'result-section display-none' });
 
         // Enter 키로 추가 가능하도록
         textarea.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'Enter') {
-                this.addWords(textarea.value, this.bookSelect.value);
+                this.addWords(textarea.value, this.selectedBookId);
             }
         });
 
@@ -237,7 +238,8 @@ export class AddWordsModal extends Modal {
         const progressSection = this.contentEl.querySelector('.progress-section') as HTMLElement;
         const progressText = progressSection.querySelector('.progress-text') as HTMLElement;
         
-        progressSection.style.display = 'block';
+        progressSection.removeClass('display-none');
+        progressSection.addClass('display-block');
         progressText.textContent = `단어를 추가하는 중... (0/${totalWords})`;
     }
 
@@ -253,12 +255,14 @@ export class AddWordsModal extends Modal {
 
     private hideProgress() {
         const progressSection = this.contentEl.querySelector('.progress-section') as HTMLElement;
-        progressSection.style.display = 'none';
+        progressSection.removeClass('display-block');
+        progressSection.addClass('display-none');
     }
 
     private showResults(results: { success: string[]; failed: string[]; alreadyExists: string[] }) {
         const resultSection = this.contentEl.querySelector('.result-section') as HTMLElement;
-        resultSection.style.display = 'block';
+        resultSection.removeClass('display-none');
+        resultSection.addClass('display-block');
         resultSection.empty();
 
         const totalProcessed = results.success.length + results.failed.length + results.alreadyExists.length;
@@ -322,7 +326,8 @@ export class AddWordsModal extends Modal {
             cls: 'add-more-button'
         });
         addMoreButton.addEventListener('click', () => {
-            resultSection.style.display = 'none';
+            resultSection.removeClass('display-block');
+            resultSection.addClass('display-none');
             const textarea = this.contentEl.querySelector('.words-textarea') as HTMLTextAreaElement;
             textarea.value = '';
             textarea.focus();
@@ -379,11 +384,14 @@ export class AddWordsModal extends Modal {
         await this.plugin.databaseManager.loadAllBooks();
         
         const books = this.plugin.databaseManager.getAllBooks();
-        this.bookSelect.innerHTML = '';
+        this.bookSelect.empty();
         books.forEach(book => {
             const option = document.createElement('option');
             option.value = book.id;
             option.text = book.name;
+            if (book.id === this.selectedBookId) {
+                option.selected = true;
+            }
             this.bookSelect.appendChild(option);
         });
     }

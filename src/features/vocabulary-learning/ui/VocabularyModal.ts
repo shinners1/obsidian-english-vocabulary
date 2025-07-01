@@ -177,7 +177,12 @@ export class VocabularyModal extends Modal {
         const wordContainer = cardContainer.createEl('div', { cls: 'word-container' });
         const wordEl = wordContainer.createEl('h1', { cls: 'card-word' });
         if (currentCard.pronunciation && currentCard.pronunciation.trim()) {
-            wordEl.innerHTML = `${currentCard.word} <span class="pronunciation">[${currentCard.pronunciation}]</span>`;
+            wordEl.textContent = currentCard.word;
+            wordEl.appendText(' ');
+            wordEl.createEl('span', { 
+                text: `[${currentCard.pronunciation}]`,
+                cls: 'pronunciation'
+            });
         } else {
             wordEl.textContent = currentCard.word;
         }
@@ -187,7 +192,7 @@ export class VocabularyModal extends Modal {
             cls: 'tts-play-button word-play-button',
             attr: { 'aria-label': '단어 발음 듣기' }
         });
-        wordPlayButton.innerHTML = '🔊';
+        wordPlayButton.textContent = '🔊';
         wordPlayButton.addEventListener('click', () => {
             this.ttsService.speakWord(currentCard.word);
         });
@@ -219,7 +224,7 @@ export class VocabularyModal extends Modal {
                     cls: 'tts-play-button example-play-button',
                     attr: { 'aria-label': '예문 발음 듣기' }
                 });
-                examplePlayButton.innerHTML = '🔊';
+                examplePlayButton.textContent = '🔊';
                 examplePlayButton.addEventListener('click', () => {
                     this.ttsService.speakExample(example.english);
                 });
@@ -247,7 +252,7 @@ export class VocabularyModal extends Modal {
                 cls: 'tts-play-button example-play-button',
                 attr: { 'aria-label': '예문 발음 듣기' }
             });
-            examplePlayButton.innerHTML = '🔊';
+            examplePlayButton.textContent = '🔊';
             examplePlayButton.addEventListener('click', () => {
                 this.ttsService.speakExample(`This is an example sentence with the word "${currentCard.word}".`);
             });

@@ -1,5 +1,5 @@
 {
-    "name": "obsidian-english-vocabulary",
+    "name": "english-vocabulary-learning",
     "version": "0.1",
     "description": "영어 단어 학습을 위한 플래시카드 플러그인",
     "main": "main.js",

@@ -3481,11 +3481,30 @@ JSON \uD615\uC2DD\uC73C\uB85C\uB9CC \uC751\uB2F5\uD574\uC8FC\uC138\uC694. \uB2E4
     fixed = fixed.replace(/,\s*,/g, ",");
     fixed = fixed.replace(/,\s*\]/g, "]");
     fixed = fixed.replace(/,\s*\}/g, "}");
-    fixed = fixed.replace(/(?<!\\)"/g, (match, offset) => {
-      const before = fixed.substring(0, offset);
-      const quoteCount = (before.match(/"/g) || []).length;
-      return quoteCount % 2 === 0 ? match : '\\"';
-    });
+    let result = "";
+    let inString = false;
+    let escaped = false;
+    for (let i = 0; i < fixed.length; i++) {
+      const char = fixed[i];
+      const prevChar = i > 0 ? fixed[i - 1] : "";
+      if (char === '"' && !escaped) {
+        if (inString) {
+          inString = false;
+          result += char;
+        } else {
+          inString = true;
+          result += char;
+        }
+      } else if (char === '"' && escaped) {
+        result += char;
+      } else if (char === '"' && inString && !escaped) {
+        result += '\\"';
+      } else {
+        result += char;
+      }
+      escaped = char === "\\" && !escaped;
+    }
+    fixed = result;
     return fixed;
   }
 };
@@ -3653,7 +3672,9 @@ var VocabularySettingTab = class extends import_obsidian.PluginSettingTab {
     const folders = this.app.vault.getAllLoadedFiles().filter((f) => f instanceof import_obsidian.TFolder);
     new import_obsidian.Setting(containerEl).setName("\uB2E8\uC5B4\uC7A5 \uC800\uC7A5 \uD3F4\uB354").setDesc("\uB2E8\uC5B4\uC7A5 \uD30C\uC77C\uB4E4\uC774 \uC800\uC7A5\uB420 \uD3F4\uB354\uB97C \uC120\uD0DD\uD558\uC138\uC694. (\uAE30\uBCF8\uAC12: Vocabulary)").addDropdown((dropdown) => {
       folders.forEach((folder) => {
-        dropdown.addOption(folder.path, folder.path);
+        if (folder instanceof import_obsidian.TFolder) {
+          dropdown.addOption(folder.path, folder.path);
+        }
       });
       dropdown.setValue(this.plugin.settings.vocabularyFolderPath);
       dropdown.onChange(async (value) => {
@@ -3742,7 +3763,8 @@ var VocabularySettingTab = class extends import_obsidian.PluginSettingTab {
     allTtsSettings.forEach((setting) => {
       const element = setting;
       if (isEnabled) {
-        element.style.opacity = "1";
+        element.removeClass("settings-disabled");
+        element.addClass("settings-enabled");
         const buttons = element.querySelectorAll("button");
         const dropdowns = element.querySelectorAll("select");
         const sliders = element.querySelectorAll('input[type="range"]');
@@ -3754,7 +3776,8 @@ var VocabularySettingTab = class extends import_obsidian.PluginSettingTab {
         toggles.forEach((toggle) => toggle.disabled = false);
         inputs.forEach((input) => input.disabled = false);
       } else {
-        element.style.opacity = "0.5";
+        element.removeClass("settings-enabled");
+        element.addClass("settings-disabled");
         const buttons = element.querySelectorAll("button");
         const dropdowns = element.querySelectorAll("select");
         const sliders = element.querySelectorAll('input[type="range"]');
@@ -3848,7 +3871,8 @@ var VocabularySettingTab = class extends import_obsidian.PluginSettingTab {
     guideEl.createEl("h4", { text: "\u{1F527} Google Cloud TTS \uC124\uC815 \uAC00\uC774\uB4DC", attr: { style: "margin: 0 0 10px 0; color: var(--interactive-accent);" } });
     const stepsList = guideEl.createEl("ol", { attr: { style: "margin: 0; padding-left: 20px; line-height: 1.6;" } });
     const step1 = stepsList.createEl("li");
-    step1.innerHTML = "<strong>Google Cloud Console \uC811\uC18D:</strong> ";
+    step1.createEl("strong", { text: "Google Cloud Console \uC811\uC18D:" });
+    step1.appendText(" ");
     const step1Link = step1.createEl("a", {
       text: "console.cloud.google.com",
       href: "https://console.cloud.google.com",
@@ -3858,9 +3882,11 @@ var VocabularySettingTab = class extends import_obsidian.PluginSettingTab {
       window.open("https://console.cloud.google.com", "_blank");
     });
     const step2 = stepsList.createEl("li");
-    step2.innerHTML = "<strong>\uD504\uB85C\uC81D\uD2B8 \uC120\uD0DD/\uC0DD\uC131:</strong> \uAE30\uC874 \uD504\uB85C\uC81D\uD2B8\uB97C \uC120\uD0DD\uD558\uAC70\uB098 \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB97C \uC0DD\uC131\uD569\uB2C8\uB2E4.";
+    step2.createEl("strong", { text: "\uD504\uB85C\uC81D\uD2B8 \uC120\uD0DD/\uC0DD\uC131:" });
+    step2.appendText(" \uAE30\uC874 \uD504\uB85C\uC81D\uD2B8\uB97C \uC120\uD0DD\uD558\uAC70\uB098 \uC0C8 \uD504\uB85C\uC81D\uD2B8\uB97C \uC0DD\uC131\uD569\uB2C8\uB2E4.");
     const step3 = stepsList.createEl("li");
-    step3.innerHTML = "<strong>Text-to-Speech API \uD65C\uC131\uD654:</strong> ";
+    step3.createEl("strong", { text: "Text-to-Speech API \uD65C\uC131\uD654:" });
+    step3.appendText(" ");
     const step3Link = step3.createEl("a", {
       text: "API \uB77C\uC774\uBE0C\uB7EC\uB9AC\uC5D0\uC11C \uD65C\uC131\uD654",
       href: "https://console.cloud.google.com/apis/library/texttospeech.googleapis.com",
@@ -3870,13 +3896,17 @@ var VocabularySettingTab = class extends import_obsidian.PluginSettingTab {
       window.open("https://console.cloud.google.com/apis/library/texttospeech.googleapis.com", "_blank");
     });
     const step4 = stepsList.createEl("li");
-    step4.innerHTML = "<strong>API \uD0A4 \uC0DD\uC131:</strong> \uC0AC\uC6A9\uC790 \uC778\uC99D \uC815\uBCF4 > API \uD0A4 > \uC0C8 API \uD0A4 \uC0DD\uC131";
+    step4.createEl("strong", { text: "API \uD0A4 \uC0DD\uC131:" });
+    step4.appendText(" \uC0AC\uC6A9\uC790 \uC778\uC99D \uC815\uBCF4 > API \uD0A4 > \uC0C8 API \uD0A4 \uC0DD\uC131");
     const step5 = stepsList.createEl("li");
-    step5.innerHTML = "<strong>API \uD0A4 \uC81C\uD55C \uC124\uC815 (\uAD8C\uC7A5):</strong> \uD0A4 \uC81C\uD55C > API \uC81C\uD55C > Cloud Text-to-Speech API \uC120\uD0DD";
+    step5.createEl("strong", { text: "API \uD0A4 \uC81C\uD55C \uC124\uC815 (\uAD8C\uC7A5):" });
+    step5.appendText(" \uD0A4 \uC81C\uD55C > API \uC81C\uD55C > Cloud Text-to-Speech API \uC120\uD0DD");
     const warningEl = guideEl.createEl("div", {
       attr: { style: "margin-top: 10px; padding: 8px; background-color: var(--background-modifier-error-rgb); border-radius: 3px; font-size: 0.9em;" }
     });
-    warningEl.innerHTML = '\u26A0\uFE0F <strong>\uC911\uC694:</strong> Text-to-Speech API\uAC00 \uD65C\uC131\uD654\uB418\uC9C0 \uC54A\uC740 \uACBD\uC6B0 "API_KEY_SERVICE_BLOCKED" \uC624\uB958\uAC00 \uBC1C\uC0DD\uD569\uB2C8\uB2E4.';
+    warningEl.appendText("\u26A0\uFE0F ");
+    warningEl.createEl("strong", { text: "\uC911\uC694:" });
+    warningEl.appendText(' Text-to-Speech API\uAC00 \uD65C\uC131\uD654\uB418\uC9C0 \uC54A\uC740 \uACBD\uC6B0 "API_KEY_SERVICE_BLOCKED" \uC624\uB958\uAC00 \uBC1C\uC0DD\uD569\uB2C8\uB2E4.');
     new import_obsidian.Setting(containerEl).setName("Google Cloud TTS API \uD0A4").setDesc("Google Cloud Text-to-Speech API \uD0A4\uB97C \uC785\uB825\uD558\uC138\uC694.").setClass("google-cloud-api-key-setting").addText((text) => {
       const currentKey = this.plugin.settings.googleCloudTTSApiKey;
       const decryptedKey = decryptApiKey(currentKey);
@@ -3946,7 +3976,7 @@ var VocabularySettingTab = class extends import_obsidian.PluginSettingTab {
   updateGoogleCloudVoices() {
     const voiceDropdown = this.containerEl.querySelector(".google-cloud-voice-setting select");
     if (voiceDropdown) {
-      voiceDropdown.innerHTML = "";
+      voiceDropdown.empty();
       const dropdown = { addOption: (value, text) => {
         const option = document.createElement("option");
         option.value = value;
@@ -5565,7 +5595,12 @@ var VocabularyModal = class extends import_obsidian4.Modal {
     const wordContainer = cardContainer.createEl("div", { cls: "word-container" });
     const wordEl = wordContainer.createEl("h1", { cls: "card-word" });
     if (currentCard.pronunciation && currentCard.pronunciation.trim()) {
-      wordEl.innerHTML = `${currentCard.word} <span class="pronunciation">[${currentCard.pronunciation}]</span>`;
+      wordEl.textContent = currentCard.word;
+      wordEl.appendText(" ");
+      wordEl.createEl("span", {
+        text: `[${currentCard.pronunciation}]`,
+        cls: "pronunciation"
+      });
     } else {
       wordEl.textContent = currentCard.word;
     }
@@ -5573,7 +5608,7 @@ var VocabularyModal = class extends import_obsidian4.Modal {
       cls: "tts-play-button word-play-button",
       attr: { "aria-label": "\uB2E8\uC5B4 \uBC1C\uC74C \uB4E3\uAE30" }
     });
-    wordPlayButton.innerHTML = "\u{1F50A}";
+    wordPlayButton.textContent = "\u{1F50A}";
     wordPlayButton.addEventListener("click", () => {
       this.ttsService.speakWord(currentCard.word);
     });
@@ -5597,7 +5632,7 @@ var VocabularyModal = class extends import_obsidian4.Modal {
           cls: "tts-play-button example-play-button",
           attr: { "aria-label": "\uC608\uBB38 \uBC1C\uC74C \uB4E3\uAE30" }
         });
-        examplePlayButton.innerHTML = "\u{1F50A}";
+        examplePlayButton.textContent = "\u{1F50A}";
         examplePlayButton.addEventListener("click", () => {
           this.ttsService.speakExample(example.english);
         });
@@ -5619,7 +5654,7 @@ var VocabularyModal = class extends import_obsidian4.Modal {
         cls: "tts-play-button example-play-button",
         attr: { "aria-label": "\uC608\uBB38 \uBC1C\uC74C \uB4E3\uAE30" }
       });
-      examplePlayButton.innerHTML = "\u{1F50A}";
+      examplePlayButton.textContent = "\u{1F50A}";
       examplePlayButton.addEventListener("click", () => {
         this.ttsService.speakExample(`This is an example sentence with the word "${currentCard.word}".`);
       });
@@ -5794,7 +5829,7 @@ var ConfirmModal = class extends import_obsidian4.Modal {
 };
 
 // src/features/book-management/ui/VocabularyManagerModal.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // src/infrastructure/external/WordService.ts
 var WordService = class {
@@ -5990,792 +6025,8 @@ var AddBookModal = class extends import_obsidian5.Modal {
   }
 };
 
-// src/features/book-management/ui/VocabularyManagerModal.ts
-var VocabularyManagerModal = class extends import_obsidian6.Modal {
-  constructor(app, plugin) {
-    var _a;
-    super(app);
-    this.currentView = "list";
-    this.selectedWords = /* @__PURE__ */ new Set();
-    this.selectedBookId = "";
-    this.plugin = plugin;
-    this.databaseManager = plugin.databaseManager;
-    this.wordService = new WordService();
-    this.llmService = plugin.llmService;
-    this.selectedBookId = ((_a = this.databaseManager.getCurrentBook()) == null ? void 0 : _a.id) || "default";
-  }
-  hasValidApiKey() {
-    const provider = this.plugin.settings.llmProvider;
-    switch (provider) {
-      case "openai":
-        return !!this.plugin.settings.openaiApiKey;
-      case "anthropic":
-        return !!this.plugin.settings.anthropicApiKey;
-      case "google":
-        return !!this.plugin.settings.googleApiKey;
-      default:
-        return false;
-    }
-  }
-  async onOpen() {
-    var _a;
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.addClass("vocabulary-manager-modal");
-    contentEl.classList.add("wide-manager-modal");
-    await this.databaseManager.loadAllBooks();
-    this.selectedBookId = ((_a = this.databaseManager.getCurrentBook()) == null ? void 0 : _a.id) || "default";
-    this.createBookSelectorHeader();
-    this.createNavigation();
-    this.showCurrentView();
-    document.addEventListener("bookCreated", this.handleBookCreated.bind(this));
-  }
-  async handleBookCreated(event) {
-    const newBook = event.detail;
-    this.selectedBookId = newBook.id;
-    await this.refreshBookSelector();
-  }
-  createBookSelectorHeader() {
-    const headerEl = this.contentEl.createEl("div", { cls: "manager-header" });
-    headerEl.style.display = "flex";
-    headerEl.style.alignItems = "center";
-    headerEl.style.gap = "18px";
-    headerEl.style.marginBottom = "18px";
-    const books = this.databaseManager.getAllBooks();
-    const bookSelect = headerEl.createEl("select", { cls: "book-select-dropdown" });
-    bookSelect.style.height = "38px";
-    bookSelect.style.fontSize = "16px";
-    books.forEach((book) => {
-      const option = document.createElement("option");
-      option.value = book.id;
-      option.text = book.name;
-      if (book.id === this.selectedBookId)
-        option.selected = true;
-      bookSelect.appendChild(option);
-    });
-    bookSelect.addEventListener("change", async (e) => {
-      this.selectedBookId = e.target.value;
-      await this.databaseManager.setCurrentBook(this.selectedBookId);
-      this.showCurrentView();
-    });
-    const addBookBtn = headerEl.createEl("button", { text: "\uC0C8 \uB2E8\uC5B4\uC7A5 \uCD94\uAC00", cls: "book-manage-button" });
-    addBookBtn.addEventListener("click", () => {
-      const addBookModal = new AddBookModal(this.app, this.plugin);
-      addBookModal.onClose = () => {
-        this.refreshBookSelector();
-      };
-      addBookModal.open();
-    });
-    const delBookBtn = headerEl.createEl("button", { text: "\uD604\uC7AC \uB2E8\uC5B4\uC7A5 \uC0AD\uC81C", cls: "book-delete-button" });
-    const isDefault = this.selectedBookId === "default";
-    if (isDefault) {
-      delBookBtn.setAttr("disabled", "true");
-      delBookBtn.addClass("disabled");
-    }
-    delBookBtn.addEventListener("click", async () => {
-      if (isDefault)
-        return;
-      const currentBook = this.databaseManager.getBook(this.selectedBookId);
-      if (!currentBook) {
-        new import_obsidian6.Notice("\uB2E8\uC5B4\uC7A5 \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
-        return;
-      }
-      const wordsInBook = this.databaseManager.getWordsByBook(this.selectedBookId);
-      const wordCount = wordsInBook.length;
-      const confirmModal = new ConfirmModal2(
-        this.app,
-        "\uB2E8\uC5B4\uC7A5 \uC0AD\uC81C \uD655\uC778",
-        `\uC815\uB9D0\uB85C "${currentBook.name}" \uB2E8\uC5B4\uC7A5\uC744 \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?
-
-\u2022 \uB2E8\uC5B4\uC7A5 \uC774\uB984: ${currentBook.name}
-\u2022 \uD3EC\uD568\uB41C \uB2E8\uC5B4 \uC218: ${wordCount}\uAC1C
-\u2022 \uC0DD\uC131\uC77C: ${new Date(currentBook.createdAt).toLocaleDateString("ko-KR")}
-
-\u26A0\uFE0F \uC774 \uC791\uC5C5\uC740 \uB418\uB3CC\uB9B4 \uC218 \uC5C6\uC73C\uBA70, \uB2E8\uC5B4\uC7A5\uACFC \uBAA8\uB4E0 \uB2E8\uC5B4\uAC00 \uC601\uAD6C\uC801\uC73C\uB85C \uC0AD\uC81C\uB429\uB2C8\uB2E4.`,
-        async () => {
-          try {
-            await this.databaseManager.deleteBook(this.selectedBookId);
-            this.selectedBookId = "default";
-            await this.databaseManager.setCurrentBook("default");
-            new import_obsidian6.Notice(`"${currentBook.name}" \uB2E8\uC5B4\uC7A5\uC774 \uC131\uACF5\uC801\uC73C\uB85C \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`);
-            this.onOpen();
-          } catch (e) {
-            new import_obsidian6.Notice("\uB2E8\uC5B4\uC7A5 \uC0AD\uC81C \uC2E4\uD328: " + e.message);
-          }
-        }
-      );
-      confirmModal.open();
-    });
-  }
-  createNavigation() {
-    const navEl = this.contentEl.createEl("div", { cls: "manager-navigation" });
-    const listBtn = navEl.createEl("button", { text: "\uB2E8\uC5B4 \uBAA9\uB85D", cls: "nav-button" });
-    listBtn.addEventListener("click", () => {
-      this.currentView = "list";
-      this.showCurrentView();
-    });
-    const statsBtn = navEl.createEl("button", { text: "\uD1B5\uACC4", cls: "nav-button" });
-    statsBtn.addEventListener("click", () => {
-      this.currentView = "statistics";
-      this.showCurrentView();
-    });
-    const addBtn = navEl.createEl("button", { text: "\uB2E8\uC5B4 \uCD94\uAC00", cls: "nav-button" });
-    addBtn.addEventListener("click", () => {
-      this.currentView = "add";
-      this.showCurrentView();
-    });
-    const startLearningButton = navEl.createEl("button", {
-      text: "\uC804\uCCB4 \uC601\uC5B4 \uB2E8\uC5B4 \uD559\uC2B5 \uC2DC\uC791",
-      cls: "nav-button"
-    });
-    startLearningButton.addEventListener("click", () => {
-      this.close();
-      new VocabularyModal(this.app, this.plugin).open();
-    });
-  }
-  showCurrentView() {
-    const contentEl = this.contentEl.querySelector(".manager-content") || this.contentEl.createEl("div", { cls: "manager-content" });
-    contentEl.empty();
-    switch (this.currentView) {
-      case "list":
-        this.showWordList(contentEl);
-        break;
-      case "statistics":
-        this.showStatistics(contentEl);
-        break;
-      case "add":
-        this.showAddWord(contentEl);
-        break;
-    }
-  }
-  showWordList(container2) {
-    const words = this.databaseManager.getAllWords();
-    if (words.length === 0) {
-      container2.createEl("p", {
-        text: "\uB2E8\uC5B4\uC7A5\uC774 \uBE44\uC5B4\uC788\uC2B5\uB2C8\uB2E4. \uB2E8\uC5B4\uB97C \uCD94\uAC00\uD574\uBCF4\uC138\uC694!",
-        cls: "empty-message"
-      });
-      return;
-    }
-    const searchEl = container2.createEl("div", { cls: "search-section" });
-    const searchInput = searchEl.createEl("input", {
-      type: "text",
-      placeholder: "\uB2E8\uC5B4 \uAC80\uC0C9...",
-      cls: "search-input"
-    });
-    const selectionControls = searchEl.createEl("div", { cls: "selection-controls" });
-    const allSelected = this.selectedWords.size === words.length && words.length > 0;
-    const selectAllBtn = selectionControls.createEl("button", {
-      text: allSelected ? "\uC804\uCCB4 \uD574\uC81C" : "\uC804\uCCB4 \uC120\uD0DD",
-      cls: "selection-button"
-    });
-    selectAllBtn.addEventListener("click", () => {
-      if (this.selectedWords.size === words.length) {
-        this.selectedWords.clear();
-      } else {
-        this.selectedWords.clear();
-        words.forEach((word) => this.selectedWords.add(word.word));
-      }
-      this.showCurrentView();
-    });
-    const fetchSelectedButton = selectionControls.createEl("button", {
-      text: "\uC120\uD0DD \uB2E8\uC5B4 \uB73B \uAC00\uC838\uC624\uAE30",
-      cls: "fetch-selected-button"
-    });
-    fetchSelectedButton.addEventListener("click", () => {
-      if (this.selectedWords.size === 0) {
-        new import_obsidian6.Notice("\uC120\uD0DD\uB41C \uB2E8\uC5B4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
-        return;
-      }
-      this.showFetchSelectedMeaningsModal();
-    });
-    const wordListEl = container2.createEl("div", { cls: "word-list" });
-    const renderWords = (filteredWords) => {
-      wordListEl.empty();
-      filteredWords.forEach((word) => {
-        this.createWordItem(wordListEl, word);
-      });
-    };
-    searchInput.addEventListener("input", (e) => {
-      const query = e.target.value;
-      const filteredWords = query ? this.databaseManager.searchWords(query) : words;
-      renderWords(filteredWords);
-    });
-    renderWords(words);
-  }
-  createWordItem(container2, word) {
-    const wordEl = container2.createEl("div", { cls: "word-item" });
-    const checkbox = wordEl.createEl("input", {
-      type: "checkbox",
-      cls: "word-checkbox"
-    });
-    checkbox.checked = this.selectedWords.has(word.word);
-    checkbox.addEventListener("change", (e) => {
-      const isChecked = e.target.checked;
-      if (isChecked) {
-        this.selectedWords.add(word.word);
-      } else {
-        this.selectedWords.delete(word.word);
-      }
-    });
-    const wordHeader = wordEl.createEl("div", { cls: "word-header" });
-    const wordTitleEl = wordHeader.createEl("h3", { cls: "word-title" });
-    if (word.pronunciation && word.pronunciation.trim()) {
-      wordTitleEl.innerHTML = `${word.word} <span class="pronunciation">[${word.pronunciation}]</span>`;
-    } else {
-      wordTitleEl.textContent = word.word;
-    }
-    const difficultyBadge = wordHeader.createEl("span", {
-      text: this.getDifficultyText(word.difficulty),
-      cls: `difficulty-badge ${word.difficulty}`
-    });
-    const wordContent = wordEl.createEl("div", { cls: "word-content" });
-    wordContent.createEl("p", {
-      text: `\uB73B: ${word.meanings.join(", ")}`,
-      cls: "word-meanings"
-    });
-    wordContent.createEl("p", {
-      text: `\uBCF5\uC2B5 \uD69F\uC218: ${word.reviewCount}\uD68C`,
-      cls: "review-count"
-    });
-    if (word.lastReviewed) {
-      wordContent.createEl("p", {
-        text: `\uB9C8\uC9C0\uB9C9 \uBCF5\uC2B5: ${formatDate(word.lastReviewed)}`,
-        cls: "last-reviewed"
-      });
-    }
-    const wordActions = wordEl.createEl("div", { cls: "word-actions" });
-    if (this.plugin.settings.enableAdvancedFeatures) {
-      const fetchButton = wordActions.createEl("button", {
-        text: "\uB2E8\uC5B4 \uB73B \uAC00\uC838\uC624\uAE30",
-        cls: "action-button fetch-single-button"
-      });
-      fetchButton.addEventListener("click", () => {
-        this.fetchSingleWordMeaning(word);
-      });
-    }
-    const deleteBtn = wordActions.createEl("button", {
-      text: "\uC0AD\uC81C",
-      cls: "action-button delete-button"
-    });
-    deleteBtn.addEventListener("click", async () => {
-      const confirmModal = new ConfirmModal2(
-        this.app,
-        "\uB2E8\uC5B4 \uC0AD\uC81C",
-        `"${word.word}" \uB2E8\uC5B4\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?`,
-        async () => {
-          await this.databaseManager.removeWord(word.word);
-          this.showCurrentView();
-        }
-      );
-      confirmModal.open();
-    });
-  }
-  showStatistics(container2) {
-    const stats = this.databaseManager.getStatistics();
-    const statsGrid = container2.createEl("div", { cls: "stats-grid" });
-    const basicStats = statsGrid.createEl("div", { cls: "stats-section" });
-    basicStats.createEl("h3", { text: "\uAE30\uBCF8 \uD1B5\uACC4", cls: "stats-title" });
-    this.createStatItem(basicStats, "\uCD1D \uB2E8\uC5B4 \uC218", stats.totalWords.toString());
-    this.createStatItem(basicStats, "\uCD1D \uBCF5\uC2B5 \uD69F\uC218", stats.totalReviews.toString());
-    this.createStatItem(basicStats, "\uC5F0\uC18D \uD559\uC2B5\uC77C", `${stats.streakDays}\uC77C`);
-    this.createStatItem(basicStats, "\uD3C9\uADE0 \uB09C\uC774\uB3C4", stats.averageDifficulty.toFixed(1));
-    const difficultyStats = statsGrid.createEl("div", { cls: "stats-section" });
-    difficultyStats.createEl("h3", { text: "\uB09C\uC774\uB3C4\uBCC4 \uBD84\uD3EC", cls: "stats-title" });
-    this.createStatItem(difficultyStats, "\uC26C\uC6C0", stats.wordsByDifficulty.easy.toString());
-    this.createStatItem(difficultyStats, "\uC88B\uC74C", stats.wordsByDifficulty.good.toString());
-    this.createStatItem(difficultyStats, "\uC5B4\uB824\uC6C0", stats.wordsByDifficulty.hard.toString());
-    const activityStats = statsGrid.createEl("div", { cls: "stats-section" });
-    activityStats.createEl("h3", { text: "\uCD5C\uADFC 7\uC77C \uD65C\uB3D9", cls: "stats-title" });
-    stats.recentActivity.forEach((activity) => {
-      const date = new Date(activity.date).toLocaleDateString("ko-KR", {
-        month: "short",
-        day: "numeric"
-      });
-      this.createStatItem(
-        activityStats,
-        date,
-        `\uD559\uC2B5: ${activity.wordsStudied}, \uBCF5\uC2B5: ${activity.reviewsCompleted}`
-      );
-    });
-  }
-  createStatItem(container2, label, value) {
-    const statEl = container2.createEl("div", { cls: "stat-item" });
-    statEl.createEl("span", { text: label, cls: "stat-label" });
-    statEl.createEl("span", { text: value, cls: "stat-value" });
-  }
-  showAddWord(container2) {
-    const addSection = container2.createEl("div", { cls: "add-word-section" });
-    addSection.createEl("h3", { text: "\uC0C8 \uB2E8\uC5B4 \uCD94\uAC00", cls: "section-title" });
-    const inputEl = addSection.createEl("div", { cls: "word-input-group" });
-    const wordInput = inputEl.createEl("input", {
-      type: "text",
-      placeholder: "\uC601\uB2E8\uC5B4\uB97C \uC785\uB825\uD558\uC138\uC694 (\uC608: beautiful)",
-      cls: "word-input"
-    });
-    const addButton = inputEl.createEl("button", {
-      text: "\uB2E8\uC5B4 \uCD94\uAC00",
-      cls: "add-button"
-    });
-    const addWord = async () => {
-      const word = wordInput.value.trim();
-      if (!word) {
-        addSection.createEl("p", {
-          text: "\uB2E8\uC5B4\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.",
-          cls: "error-message"
-        });
-        return;
-      }
-      try {
-        const wordData = await this.wordService.getWordData(word);
-        const vocabularyCard = {
-          ...wordData,
-          reviewCount: 0,
-          difficulty: "good",
-          lastReviewed: null,
-          addedDate: (/* @__PURE__ */ new Date()).toISOString(),
-          bookId: this.selectedBookId
-        };
-        await this.databaseManager.addWord(vocabularyCard);
-        wordInput.value = "";
-        addSection.createEl("p", {
-          text: `"${word}" \uB2E8\uC5B4\uAC00 \uC131\uACF5\uC801\uC73C\uB85C \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4!`,
-          cls: "success-message"
-        });
-        setTimeout(() => {
-          const successMsg = addSection.querySelector(".success-message");
-          if (successMsg)
-            successMsg.remove();
-        }, 3e3);
-      } catch (error) {
-        addSection.createEl("p", {
-          text: "\uB2E8\uC5B4\uB97C \uCD94\uAC00\uD558\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.",
-          cls: "error-message"
-        });
-      }
-    };
-    addButton.addEventListener("click", addWord);
-    wordInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        addWord();
-      }
-    });
-  }
-  getDifficultyText(difficulty) {
-    switch (difficulty) {
-      case "easy":
-        return "\uC26C\uC6C0";
-      case "good":
-        return "\uC88B\uC74C";
-      case "hard":
-        return "\uC5B4\uB824\uC6C0";
-      default:
-        return "\uC88B\uC74C";
-    }
-  }
-  startReview(words) {
-    const reviewModal = new VocabularyReviewModal(this.app, this.plugin, words);
-    reviewModal.open();
-  }
-  showFetchSelectedMeaningsModal() {
-    const selectedWordList = Array.from(this.selectedWords);
-    new FetchSelectedMeaningsModal(this.app, this.plugin, selectedWordList).open();
-  }
-  async fetchSingleWordMeaning(word) {
-    if (!this.hasValidApiKey()) {
-      new import_obsidian6.Notice("LLM API \uD0A4\uAC00 \uC124\uC815\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uC124\uC815\uC5D0\uC11C API \uD0A4\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
-      return;
-    }
-    const confirmModal = new ConfirmModal2(
-      this.app,
-      "\uB2E8\uC5B4 \uB73B \uAC00\uC838\uC624\uAE30",
-      `"${word.word}" \uB2E8\uC5B4\uC758 \uB73B\uC744 \uC0C8\uB85C \uAC00\uC838\uC624\uC2DC\uACA0\uC2B5\uB2C8\uAE4C? \uAE30\uC874 \uC815\uBCF4\uAC00\uC5B4\uC50C\uC6CC\uC9D1\uB2C8\uB2E4.`,
-      async () => {
-        try {
-          new import_obsidian6.Notice(`"${word.word}" \uB2E8\uC5B4 \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uB294 \uC911...`);
-          const llmResponse = await this.plugin.llmService.getWordDetails(word.word);
-          if (llmResponse.success) {
-            const wordDetail = llmResponse.data;
-            const wordData = this.plugin.llmService.convertToWordData(wordDetail);
-            const updatedWord = {
-              ...word,
-              meanings: wordData.meanings,
-              examples: wordData.examples,
-              similarWords: wordData.similarWords
-            };
-            await this.plugin.databaseManager.updateWordData(word.word, updatedWord);
-            new import_obsidian6.Notice(`"${word.word}" \uB2E8\uC5B4 \uC815\uBCF4\uAC00 \uC131\uACF5\uC801\uC73C\uB85C \uC5C5\uB370\uC774\uD2B8\uB418\uC5C8\uC2B5\uB2C8\uB2E4!`);
-            this.showCurrentView();
-          } else {
-            new import_obsidian6.Notice(`"${word.word}" \uB2E8\uC5B4 \uC815\uBCF4 \uAC00\uC838\uC624\uAE30 \uC2E4\uD328: ${llmResponse.error}`);
-          }
-        } catch (error) {
-          console.error(`\uB2E8\uC5B4 "${word.word}" \uCC98\uB9AC \uC2E4\uD328:`, error);
-          new import_obsidian6.Notice(`"${word.word}" \uB2E8\uC5B4 \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.`);
-        }
-      }
-    );
-    confirmModal.open();
-  }
-  async refreshBookSelector() {
-    await this.databaseManager.loadAllBooks();
-    const headerEl = this.contentEl.querySelector(".manager-header");
-    if (headerEl) {
-      const bookSelect = headerEl.querySelector(".book-select-dropdown");
-      if (bookSelect) {
-        const currentValue = bookSelect.value;
-        const books = this.databaseManager.getAllBooks();
-        bookSelect.innerHTML = "";
-        books.forEach((book) => {
-          const option = document.createElement("option");
-          option.value = book.id;
-          option.text = book.name;
-          if (book.id === currentValue || book.id === this.selectedBookId) {
-            option.selected = true;
-            this.selectedBookId = book.id;
-          }
-          bookSelect.appendChild(option);
-        });
-      }
-    }
-    this.showCurrentView();
-  }
-  onClose() {
-    const { contentEl } = this;
-    contentEl.empty();
-    document.removeEventListener("bookCreated", this.handleBookCreated.bind(this));
-  }
-};
-var VocabularyReviewModal = class extends import_obsidian6.Modal {
-  constructor(app, plugin, words) {
-    super(app);
-    this.currentIndex = 0;
-    this.showAnswer = false;
-    this.plugin = plugin;
-    this.words = words;
-  }
-  onOpen() {
-    if (this.words.length === 0) {
-      this.close();
-      return;
-    }
-    this.showCurrentWord();
-  }
-  showCurrentWord() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.addClass("vocabulary-learning-modal");
-    contentEl.style.setProperty("--review-modal-height", `${this.plugin.settings.reviewModalHeight}vh`);
-    const currentWord = this.words[this.currentIndex];
-    const progressEl = contentEl.createEl("div", { cls: "review-progress" });
-    progressEl.createEl("span", {
-      text: `${this.currentIndex + 1} / ${this.words.length}`,
-      cls: "progress-text"
-    });
-    const cardEl = contentEl.createEl("div", { cls: "review-card" });
-    const deleteButton = cardEl.createEl("button", {
-      text: "\uCE74\uB4DC \uC0AD\uC81C",
-      cls: "card-delete-button"
-    });
-    deleteButton.addEventListener("click", () => this.handleDeleteCard());
-    const wordEl = cardEl.createEl("h1", { cls: "review-word" });
-    if (currentWord.pronunciation && currentWord.pronunciation.trim()) {
-      wordEl.innerHTML = `${currentWord.word} <span class="pronunciation">[${currentWord.pronunciation}]</span>`;
-    } else {
-      wordEl.textContent = currentWord.word;
-    }
-    if (!this.showAnswer) {
-      if (currentWord.similarWords.length > 0) {
-        const similarEl = cardEl.createEl("div", { cls: "similar-words" });
-        similarEl.createEl("h3", { text: "\uC720\uC0AC\uD55C \uB2E8\uC5B4\uB4E4:" });
-        const similarList = similarEl.createEl("ul");
-        currentWord.similarWords.forEach((word) => {
-          similarList.createEl("li", { text: word });
-        });
-      }
-      if (currentWord.examples.length > 0) {
-        const examplesEl = cardEl.createEl("div", { cls: "examples" });
-        examplesEl.createEl("h3", { text: "\uC608\uBB38\uB4E4:" });
-        currentWord.examples.forEach((example) => {
-          examplesEl.createEl("p", { text: example.english, cls: "example" });
-        });
-      }
-      const checkBtn = cardEl.createEl("button", {
-        text: "\uC815\uB2F5 \uD655\uC778\uD558\uAE30",
-        cls: "check-answer-button"
-      });
-      checkBtn.addEventListener("click", () => {
-        this.showAnswer = true;
-        this.showCurrentWord();
-      });
-    } else {
-      const answerEl = cardEl.createEl("div", { cls: "answer-section" });
-      answerEl.createEl("h3", { text: "\uB73B:" });
-      const meaningsList = answerEl.createEl("ul");
-      currentWord.meanings.forEach((meaning) => {
-        meaningsList.createEl("li", { text: meaning });
-      });
-      if (currentWord.examples.length > 0) {
-        answerEl.createEl("h3", { text: "\uC608\uBB38 \uBC88\uC5ED:" });
-        currentWord.examples.forEach((example) => {
-          answerEl.createEl("p", { text: example.korean, cls: "translation" });
-        });
-      }
-      this.createReviewButtons(cardEl);
-    }
-  }
-  createReviewButtons(container2) {
-    const reviewSection = container2.createEl("div", { cls: "review-buttons" });
-    const hardBtn = reviewSection.createEl("button", { text: "\uC5B4\uB824\uC6C0", cls: "review-btn hard" });
-    const goodBtn = reviewSection.createEl("button", { text: "\uC88B\uC74C", cls: "review-btn good" });
-    const easyBtn = reviewSection.createEl("button", { text: "\uC26C\uC6C0", cls: "review-btn easy" });
-    hardBtn.addEventListener("click", () => this.handleReview("hard"));
-    goodBtn.addEventListener("click", () => this.handleReview("good"));
-    easyBtn.addEventListener("click", () => this.handleReview("easy"));
-  }
-  async handleReview(difficulty) {
-    const currentWord = this.words[this.currentIndex];
-    await this.plugin.databaseManager.updateWord(currentWord.word, difficulty);
-    this.currentIndex++;
-    this.showAnswer = false;
-    if (this.currentIndex >= this.words.length) {
-      this.showCompletion();
-    } else {
-      this.showCurrentWord();
-    }
-  }
-  async handleDeleteCard() {
-    const currentWord = this.words[this.currentIndex];
-    const confirmModal = new ConfirmModal2(
-      this.app,
-      "\uB2E8\uC5B4 \uC0AD\uC81C",
-      `"${currentWord.word}" \uB2E8\uC5B4\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?
-
-\uC774 \uC791\uC5C5\uC740 \uB418\uB3CC\uB9B4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`,
-      async () => {
-        try {
-          await this.plugin.databaseManager.removeWord(currentWord.word);
-          this.words.splice(this.currentIndex, 1);
-          if (this.words.length === 0) {
-            this.showCompletion();
-            return;
-          }
-          if (this.currentIndex >= this.words.length) {
-            this.currentIndex = this.words.length - 1;
-          }
-          this.showAnswer = false;
-          this.showCurrentWord();
-        } catch (error) {
-          console.error("\uB2E8\uC5B4 \uC0AD\uC81C \uC911 \uC624\uB958 \uBC1C\uC0DD:", error);
-          new import_obsidian6.Notice("\uB2E8\uC5B4 \uC0AD\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
-        }
-      }
-    );
-    confirmModal.open();
-  }
-  showCompletion() {
-    const { contentEl } = this;
-    contentEl.empty();
-    const completionEl = contentEl.createEl("div", { cls: "completion" });
-    completionEl.createEl("h2", { text: "\uBCF5\uC2B5 \uC644\uB8CC!" });
-    completionEl.createEl("p", { text: "\uBAA8\uB4E0 \uB2E8\uC5B4\uB97C \uBCF5\uC2B5\uD588\uC2B5\uB2C8\uB2E4." });
-    const closeBtn = completionEl.createEl("button", { text: "\uB2EB\uAE30", cls: "close-btn" });
-    closeBtn.addEventListener("click", () => this.close());
-  }
-  onClose() {
-    const { contentEl } = this;
-    contentEl.empty();
-  }
-};
-var FetchSelectedMeaningsModal = class extends import_obsidian6.Modal {
-  constructor(app, plugin, selectedWords) {
-    super(app);
-    this.isProcessing = false;
-    this.plugin = plugin;
-    this.selectedWords = selectedWords;
-  }
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.addClass("fetch-selected-meanings-modal");
-    contentEl.createEl("h2", {
-      text: `\uC120\uD0DD\uB41C ${this.selectedWords.length}\uAC1C \uB2E8\uC5B4 \uB73B \uAC00\uC838\uC624\uAE30`,
-      cls: "modal-title"
-    });
-    contentEl.createEl("p", {
-      text: `\uC120\uD0DD\uB41C \uB2E8\uC5B4\uB4E4\uC758 \uC0C1\uC138 \uC815\uBCF4\uB97C LLM API\uB97C \uD1B5\uD574 \uAC00\uC838\uC635\uB2C8\uB2E4.`,
-      cls: "modal-description"
-    });
-    const wordListEl = contentEl.createEl("div", { cls: "selected-words-list" });
-    wordListEl.createEl("h3", { text: "\uC120\uD0DD\uB41C \uB2E8\uC5B4\uB4E4:" });
-    const wordsContainer = wordListEl.createEl("div", { cls: "words-container" });
-    this.selectedWords.forEach((word) => {
-      wordsContainer.createEl("span", {
-        text: word,
-        cls: "selected-word-tag"
-      });
-    });
-    const buttonSection = contentEl.createEl("div", { cls: "button-section" });
-    const fetchButton = buttonSection.createEl("button", {
-      text: "\uB73B \uAC00\uC838\uC624\uAE30",
-      cls: "fetch-button"
-    });
-    fetchButton.addEventListener("click", () => {
-      this.fetchSelectedMeanings();
-    });
-    const cancelButton = buttonSection.createEl("button", {
-      text: "\uCDE8\uC18C",
-      cls: "cancel-button"
-    });
-    cancelButton.addEventListener("click", () => {
-      this.close();
-    });
-    const progressSection = contentEl.createEl("div", { cls: "progress-section" });
-    progressSection.style.display = "none";
-    const progressText = progressSection.createEl("div", { cls: "progress-text" });
-    const progressBar = progressSection.createEl("div", { cls: "progress-bar" });
-    const progressFill = progressBar.createEl("div", { cls: "progress-fill" });
-    const resultSection = contentEl.createEl("div", { cls: "result-section" });
-    resultSection.style.display = "none";
-  }
-  async fetchSelectedMeanings() {
-    if (this.isProcessing)
-      return;
-    this.isProcessing = true;
-    this.showProgress(this.selectedWords.length);
-    try {
-      const result = await this.plugin.llmService.getMultipleWordDetails(this.selectedWords);
-      if (result.success && Array.isArray(result.data)) {
-        const successWords = [];
-        const failedWords = [];
-        for (const wordData of result.data) {
-          try {
-            if (wordData.word && wordData.meanings && wordData.meanings.length > 0) {
-              const existingWord = this.plugin.databaseManager.getWord(wordData.word);
-              if (existingWord) {
-                const updatedWord = {
-                  ...existingWord,
-                  pronunciation: wordData.pronunciation || "",
-                  meanings: wordData.meanings,
-                  examples: wordData.examples || [],
-                  similarWords: wordData.similarWords || []
-                };
-                await this.plugin.databaseManager.updateWordData(wordData.word, updatedWord);
-                successWords.push(wordData.word);
-              }
-            } else {
-              failedWords.push(wordData.word);
-            }
-          } catch (error) {
-            console.error(`\uB2E8\uC5B4 "${wordData.word}" \uC5C5\uB370\uC774\uD2B8 \uC2E4\uD328:`, error);
-            failedWords.push(wordData.word);
-          }
-        }
-        this.hideProgress();
-        this.showResults({ success: successWords, failed: failedWords });
-        if (successWords.length > 0) {
-          new import_obsidian6.Notice(`${successWords.length}\uAC1C\uC758 \uB2E8\uC5B4 \uC815\uBCF4\uB97C \uC131\uACF5\uC801\uC73C\uB85C \uC5C5\uB370\uC774\uD2B8\uD588\uC2B5\uB2C8\uB2E4!`);
-        }
-      } else {
-        this.hideProgress();
-        new import_obsidian6.Notice("\uB2E8\uC5B4 \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uB294\uB370 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4: " + (result.error || "\uC54C \uC218 \uC5C6\uB294 \uC624\uB958"));
-      }
-    } catch (error) {
-      this.hideProgress();
-      new import_obsidian6.Notice("\uB2E8\uC5B4 \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uB294\uB370 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4: " + error.message);
-    } finally {
-      this.isProcessing = false;
-    }
-  }
-  showProgress(totalWords) {
-    const progressSection = this.contentEl.querySelector(".progress-section");
-    const progressText = progressSection.querySelector(".progress-text");
-    progressSection.style.display = "block";
-    progressText.textContent = `\uB2E8\uC5B4 \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uB294 \uC911... (0/${totalWords})`;
-  }
-  hideProgress() {
-    const progressSection = this.contentEl.querySelector(".progress-section");
-    if (progressSection) {
-      progressSection.style.display = "none";
-    }
-  }
-  showResults(results) {
-    const resultSection = this.contentEl.querySelector(".result-section");
-    resultSection.style.display = "block";
-    resultSection.empty();
-    const summaryEl = resultSection.createEl("div", { cls: "results-summary" });
-    if (results.success.length > 0) {
-      const successEl = summaryEl.createEl("div", { cls: "result-item success" });
-      successEl.createEl("span", {
-        text: `\u2705 \uC131\uACF5: ${results.success.length}\uAC1C`,
-        cls: "result-count"
-      });
-      if (results.success.length <= 10) {
-        successEl.createEl("p", {
-          text: results.success.join(", "),
-          cls: "result-words"
-        });
-      }
-    }
-    if (results.failed.length > 0) {
-      const failedEl = summaryEl.createEl("div", { cls: "result-item error" });
-      failedEl.createEl("span", {
-        text: `\u274C \uC2E4\uD328: ${results.failed.length}\uAC1C`,
-        cls: "result-count"
-      });
-      if (results.failed.length <= 10) {
-        failedEl.createEl("p", {
-          text: results.failed.join(", "),
-          cls: "result-words"
-        });
-      }
-    }
-    const buttonSection = resultSection.createEl("div", { cls: "result-buttons" });
-    const closeButton = buttonSection.createEl("button", { text: "\uB2EB\uAE30", cls: "close-button" });
-    closeButton.addEventListener("click", () => this.close());
-  }
-  onClose() {
-    this.isProcessing = false;
-    const { contentEl } = this;
-    contentEl.empty();
-  }
-};
-var ConfirmModal2 = class extends import_obsidian6.Modal {
-  constructor(app, title, message, onConfirm) {
-    super(app);
-    this.title = title;
-    this.message = message;
-    this.onConfirm = onConfirm;
-  }
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.addClass("confirm-modal");
-    contentEl.createEl("h2", { text: this.title, cls: "modal-title" });
-    contentEl.createEl("p", { text: this.message, cls: "modal-message" });
-    const buttonSection = contentEl.createEl("div", { cls: "button-section" });
-    const confirmButton = buttonSection.createEl("button", {
-      text: "\uD655\uC778",
-      cls: "confirm-button primary"
-    });
-    confirmButton.addEventListener("click", () => {
-      this.onConfirm();
-      this.close();
-    });
-    const cancelButton = buttonSection.createEl("button", {
-      text: "\uCDE8\uC18C",
-      cls: "cancel-button"
-    });
-    cancelButton.addEventListener("click", () => this.close());
-  }
-  onClose() {
-    const { contentEl } = this;
-    contentEl.empty();
-  }
-};
-
 // src/features/word-management/ui/AddWordsModal.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/shared/validation.ts
 function validateString(input, options = {}) {
@@ -6975,13 +6226,14 @@ async function processBatchWithCancellation(items, processor, options = {}) {
 }
 
 // src/features/word-management/ui/AddWordsModal.ts
-var AddWordsModal = class extends import_obsidian7.Modal {
-  constructor(app, plugin) {
+var AddWordsModal = class extends import_obsidian6.Modal {
+  constructor(app, plugin, selectedBookId) {
     super(app);
     this.isProcessing = false;
     this.cancellationTokenSource = null;
     this.plugin = plugin;
     this.wordService = new WordService();
+    this.selectedBookId = selectedBookId || "default";
   }
   async onOpen() {
     const { contentEl } = this;
@@ -7000,6 +6252,7 @@ var AddWordsModal = class extends import_obsidian7.Modal {
     await this.updateBookSelect();
     this.bookSelect.addEventListener("change", (e) => {
       const selectedBookId = e.target.value;
+      this.selectedBookId = selectedBookId;
       this.plugin.databaseManager.setCurrentBook(selectedBookId);
     });
     document.addEventListener("bookCreated", this.handleBookCreated.bind(this));
@@ -7026,7 +6279,7 @@ var AddWordsModal = class extends import_obsidian7.Modal {
       text: "\uB2E8\uC5B4 \uCD94\uAC00",
       cls: "add-button primary"
     });
-    addButton.addEventListener("click", () => this.addWords(textarea.value, this.bookSelect.value));
+    addButton.addEventListener("click", () => this.addWords(textarea.value, this.selectedBookId));
     const cancelButton = buttonSection.createEl("button", {
       text: "\uCDE8\uC18C",
       cls: "cancel-button"
@@ -7038,19 +6291,17 @@ var AddWordsModal = class extends import_obsidian7.Modal {
         this.close();
       }
     });
-    const progressSection = contentEl.createEl("div", { cls: "progress-section" });
-    progressSection.style.display = "none";
+    const progressSection = contentEl.createEl("div", { cls: "progress-section display-none" });
     const progressText = progressSection.createEl("p", {
       text: "\uB2E8\uC5B4\uB97C \uCD94\uAC00\uD558\uB294 \uC911...",
       cls: "progress-text"
     });
     const progressBar = progressSection.createEl("div", { cls: "progress-bar" });
     const progressFill = progressBar.createEl("div", { cls: "progress-fill" });
-    const resultSection = contentEl.createEl("div", { cls: "result-section" });
-    resultSection.style.display = "none";
+    const resultSection = contentEl.createEl("div", { cls: "result-section display-none" });
     textarea.addEventListener("keydown", (e) => {
       if (e.ctrlKey && e.key === "Enter") {
-        this.addWords(textarea.value, this.bookSelect.value);
+        this.addWords(textarea.value, this.selectedBookId);
       }
     });
     textarea.focus();
@@ -7061,7 +6312,7 @@ var AddWordsModal = class extends import_obsidian7.Modal {
       return;
     const words = this.parseWords(inputText);
     if (words.length === 0) {
-      new import_obsidian7.Notice("\uCD94\uAC00\uD560 \uB2E8\uC5B4\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
+      new import_obsidian6.Notice("\uCD94\uAC00\uD560 \uB2E8\uC5B4\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
       return;
     }
     this.isProcessing = true;
@@ -7110,10 +6361,10 @@ var AddWordsModal = class extends import_obsidian7.Modal {
       );
     } catch (error) {
       if (error instanceof CancellationError) {
-        new import_obsidian7.Notice("\uC791\uC5C5\uC774 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+        new import_obsidian6.Notice("\uC791\uC5C5\uC774 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
       } else {
         console.error("\uBC30\uCE58 \uCC98\uB9AC \uC911 \uC624\uB958:", error);
-        new import_obsidian7.Notice("\uB2E8\uC5B4 \uCD94\uAC00 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+        new import_obsidian6.Notice("\uB2E8\uC5B4 \uCD94\uAC00 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
       }
     } finally {
       this.isProcessing = false;
@@ -7131,7 +6382,7 @@ var AddWordsModal = class extends import_obsidian7.Modal {
     if (validation.invalid.length > 0) {
       const invalidWords = validation.invalid.slice(0, 5).map((item) => item.item).join(", ");
       const moreCount = validation.invalid.length > 5 ? ` \uC678 ${validation.invalid.length - 5}\uAC1C` : "";
-      new import_obsidian7.Notice(`\uC720\uD6A8\uD558\uC9C0 \uC54A\uC740 \uB2E8\uC5B4\uAC00 \uC81C\uC678\uB418\uC5C8\uC2B5\uB2C8\uB2E4: ${invalidWords}${moreCount}`);
+      new import_obsidian6.Notice(`\uC720\uD6A8\uD558\uC9C0 \uC54A\uC740 \uB2E8\uC5B4\uAC00 \uC81C\uC678\uB418\uC5C8\uC2B5\uB2C8\uB2E4: ${invalidWords}${moreCount}`);
     }
     const validWords = validation.valid.map((word) => validateWord(word).sanitized).map((word) => word.toLowerCase()).filter((word, index, array) => array.indexOf(word) === index);
     return validWords;
@@ -7139,7 +6390,8 @@ var AddWordsModal = class extends import_obsidian7.Modal {
   showProgress(totalWords) {
     const progressSection = this.contentEl.querySelector(".progress-section");
     const progressText = progressSection.querySelector(".progress-text");
-    progressSection.style.display = "block";
+    progressSection.removeClass("display-none");
+    progressSection.addClass("display-block");
     progressText.textContent = `\uB2E8\uC5B4\uB97C \uCD94\uAC00\uD558\uB294 \uC911... (0/${totalWords})`;
   }
   updateProgress(current, total, message) {
@@ -7152,11 +6404,13 @@ var AddWordsModal = class extends import_obsidian7.Modal {
   }
   hideProgress() {
     const progressSection = this.contentEl.querySelector(".progress-section");
-    progressSection.style.display = "none";
+    progressSection.removeClass("display-block");
+    progressSection.addClass("display-none");
   }
   showResults(results) {
     const resultSection = this.contentEl.querySelector(".result-section");
-    resultSection.style.display = "block";
+    resultSection.removeClass("display-none");
+    resultSection.addClass("display-block");
     resultSection.empty();
     const totalProcessed = results.success.length + results.failed.length + results.alreadyExists.length;
     const summaryEl = resultSection.createEl("div", { cls: "results-summary" });
@@ -7210,19 +6464,20 @@ var AddWordsModal = class extends import_obsidian7.Modal {
       cls: "add-more-button"
     });
     addMoreButton.addEventListener("click", () => {
-      resultSection.style.display = "none";
+      resultSection.removeClass("display-block");
+      resultSection.addClass("display-none");
       const textarea = this.contentEl.querySelector(".words-textarea");
       textarea.value = "";
       textarea.focus();
     });
     if (results.success.length > 0) {
-      new import_obsidian7.Notice(`${results.success.length}\uAC1C\uC758 \uB2E8\uC5B4\uAC00 \uC131\uACF5\uC801\uC73C\uB85C \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4!`);
+      new import_obsidian6.Notice(`${results.success.length}\uAC1C\uC758 \uB2E8\uC5B4\uAC00 \uC131\uACF5\uC801\uC73C\uB85C \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4!`);
     }
   }
   cancelOperation() {
     if (this.cancellationTokenSource) {
       this.cancellationTokenSource.cancel();
-      new import_obsidian7.Notice("\uC791\uC5C5 \uCDE8\uC18C \uC911...");
+      new import_obsidian6.Notice("\uC791\uC5C5 \uCDE8\uC18C \uC911...");
     }
   }
   updateCancelButton(isProcessing) {
@@ -7253,13 +6508,805 @@ var AddWordsModal = class extends import_obsidian7.Modal {
   async updateBookSelect() {
     await this.plugin.databaseManager.loadAllBooks();
     const books = this.plugin.databaseManager.getAllBooks();
-    this.bookSelect.innerHTML = "";
+    this.bookSelect.empty();
     books.forEach((book) => {
       const option = document.createElement("option");
       option.value = book.id;
       option.text = book.name;
+      if (book.id === this.selectedBookId) {
+        option.selected = true;
+      }
       this.bookSelect.appendChild(option);
     });
+  }
+};
+
+// src/features/book-management/ui/VocabularyManagerModal.ts
+var VocabularyManagerModal = class extends import_obsidian7.Modal {
+  constructor(app, plugin) {
+    var _a;
+    super(app);
+    this.currentView = "list";
+    this.selectedWords = /* @__PURE__ */ new Set();
+    this.selectedBookId = "";
+    this.plugin = plugin;
+    this.databaseManager = plugin.databaseManager;
+    this.wordService = new WordService();
+    this.llmService = plugin.llmService;
+    this.selectedBookId = ((_a = this.databaseManager.getCurrentBook()) == null ? void 0 : _a.id) || "default";
+  }
+  hasValidApiKey() {
+    const provider = this.plugin.settings.llmProvider;
+    switch (provider) {
+      case "openai":
+        return !!this.plugin.settings.openaiApiKey;
+      case "anthropic":
+        return !!this.plugin.settings.anthropicApiKey;
+      case "google":
+        return !!this.plugin.settings.googleApiKey;
+      default:
+        return false;
+    }
+  }
+  async onOpen() {
+    var _a;
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("vocabulary-manager-modal");
+    contentEl.classList.add("wide-manager-modal");
+    await this.databaseManager.loadAllBooks();
+    this.selectedBookId = ((_a = this.databaseManager.getCurrentBook()) == null ? void 0 : _a.id) || "default";
+    this.createBookSelectorHeader();
+    this.createNavigation();
+    this.showCurrentView();
+    document.addEventListener("bookCreated", this.handleBookCreated.bind(this));
+  }
+  async handleBookCreated(event) {
+    const newBook = event.detail;
+    this.selectedBookId = newBook.id;
+    await this.refreshBookSelector();
+  }
+  createBookSelectorHeader() {
+    const headerEl = this.contentEl.createEl("div", { cls: "manager-header" });
+    const books = this.databaseManager.getAllBooks();
+    const bookSelect = headerEl.createEl("select", { cls: "book-select-dropdown" });
+    books.forEach((book) => {
+      const option = document.createElement("option");
+      option.value = book.id;
+      option.text = book.name;
+      if (book.id === this.selectedBookId)
+        option.selected = true;
+      bookSelect.appendChild(option);
+    });
+    bookSelect.addEventListener("change", async (e) => {
+      this.selectedBookId = e.target.value;
+      await this.databaseManager.setCurrentBook(this.selectedBookId);
+      this.showCurrentView();
+    });
+    const addBookBtn = headerEl.createEl("button", { text: "\uC0C8 \uB2E8\uC5B4\uC7A5 \uCD94\uAC00", cls: "book-manage-button" });
+    addBookBtn.addEventListener("click", () => {
+      const addBookModal = new AddBookModal(this.app, this.plugin);
+      addBookModal.onClose = () => {
+        this.refreshBookSelector();
+      };
+      addBookModal.open();
+    });
+    const delBookBtn = headerEl.createEl("button", { text: "\uD604\uC7AC \uB2E8\uC5B4\uC7A5 \uC0AD\uC81C", cls: "book-delete-button" });
+    const isDefault = this.selectedBookId === "default";
+    if (isDefault) {
+      delBookBtn.setAttr("disabled", "true");
+      delBookBtn.addClass("disabled");
+    }
+    delBookBtn.addEventListener("click", async () => {
+      if (isDefault)
+        return;
+      const currentBook = this.databaseManager.getBook(this.selectedBookId);
+      if (!currentBook) {
+        new import_obsidian7.Notice("\uB2E8\uC5B4\uC7A5 \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      const wordsInBook = this.databaseManager.getWordsByBook(this.selectedBookId);
+      const wordCount = wordsInBook.length;
+      const confirmModal = new ConfirmModal2(
+        this.app,
+        "\uB2E8\uC5B4\uC7A5 \uC0AD\uC81C \uD655\uC778",
+        `\uC815\uB9D0\uB85C "${currentBook.name}" \uB2E8\uC5B4\uC7A5\uC744 \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?
+
+\u2022 \uB2E8\uC5B4\uC7A5 \uC774\uB984: ${currentBook.name}
+\u2022 \uD3EC\uD568\uB41C \uB2E8\uC5B4 \uC218: ${wordCount}\uAC1C
+\u2022 \uC0DD\uC131\uC77C: ${new Date(currentBook.createdAt).toLocaleDateString("ko-KR")}
+
+\u26A0\uFE0F \uC774 \uC791\uC5C5\uC740 \uB418\uB3CC\uB9B4 \uC218 \uC5C6\uC73C\uBA70, \uB2E8\uC5B4\uC7A5\uACFC \uBAA8\uB4E0 \uB2E8\uC5B4\uAC00 \uC601\uAD6C\uC801\uC73C\uB85C \uC0AD\uC81C\uB429\uB2C8\uB2E4.`,
+        async () => {
+          try {
+            await this.databaseManager.deleteBook(this.selectedBookId);
+            this.selectedBookId = "default";
+            await this.databaseManager.setCurrentBook("default");
+            new import_obsidian7.Notice(`"${currentBook.name}" \uB2E8\uC5B4\uC7A5\uC774 \uC131\uACF5\uC801\uC73C\uB85C \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.`);
+            this.onOpen();
+          } catch (e) {
+            new import_obsidian7.Notice("\uB2E8\uC5B4\uC7A5 \uC0AD\uC81C \uC2E4\uD328: " + e.message);
+          }
+        }
+      );
+      confirmModal.open();
+    });
+  }
+  createNavigation() {
+    const navEl = this.contentEl.createEl("div", { cls: "manager-navigation" });
+    const listBtn = navEl.createEl("button", { text: "\uB2E8\uC5B4 \uBAA9\uB85D", cls: "nav-button" });
+    listBtn.addEventListener("click", () => {
+      this.currentView = "list";
+      this.showCurrentView();
+    });
+    const statsBtn = navEl.createEl("button", { text: "\uD1B5\uACC4", cls: "nav-button" });
+    statsBtn.addEventListener("click", () => {
+      this.currentView = "statistics";
+      this.showCurrentView();
+    });
+    const addBtn = navEl.createEl("button", { text: "\uB2E8\uC5B4 \uCD94\uAC00", cls: "nav-button" });
+    addBtn.addEventListener("click", () => {
+      this.close();
+      new AddWordsModal(this.app, this.plugin, this.selectedBookId).open();
+    });
+    const startLearningButton = navEl.createEl("button", {
+      text: "\uC804\uCCB4 \uC601\uC5B4 \uB2E8\uC5B4 \uD559\uC2B5 \uC2DC\uC791",
+      cls: "nav-button"
+    });
+    startLearningButton.addEventListener("click", () => {
+      this.close();
+      new VocabularyModal(this.app, this.plugin).open();
+    });
+  }
+  showCurrentView() {
+    const contentEl = this.contentEl.querySelector(".manager-content") || this.contentEl.createEl("div", { cls: "manager-content" });
+    contentEl.empty();
+    switch (this.currentView) {
+      case "list":
+        this.showWordList(contentEl);
+        break;
+      case "statistics":
+        this.showStatistics(contentEl);
+        break;
+      case "add":
+        this.showAddWord(contentEl);
+        break;
+    }
+  }
+  showWordList(container2) {
+    const words = this.databaseManager.getAllWords();
+    if (words.length === 0) {
+      container2.createEl("p", {
+        text: "\uB2E8\uC5B4\uC7A5\uC774 \uBE44\uC5B4\uC788\uC2B5\uB2C8\uB2E4. \uB2E8\uC5B4\uB97C \uCD94\uAC00\uD574\uBCF4\uC138\uC694!",
+        cls: "empty-message"
+      });
+      return;
+    }
+    const searchEl = container2.createEl("div", { cls: "search-section" });
+    const searchInput = searchEl.createEl("input", {
+      type: "text",
+      placeholder: "\uB2E8\uC5B4 \uAC80\uC0C9...",
+      cls: "search-input"
+    });
+    const selectionControls = searchEl.createEl("div", { cls: "selection-controls" });
+    const allSelected = this.selectedWords.size === words.length && words.length > 0;
+    const selectAllBtn = selectionControls.createEl("button", {
+      text: allSelected ? "\uC804\uCCB4 \uD574\uC81C" : "\uC804\uCCB4 \uC120\uD0DD",
+      cls: "selection-button"
+    });
+    selectAllBtn.addEventListener("click", () => {
+      if (this.selectedWords.size === words.length) {
+        this.selectedWords.clear();
+      } else {
+        this.selectedWords.clear();
+        words.forEach((word) => this.selectedWords.add(word.word));
+      }
+      this.showCurrentView();
+    });
+    const fetchSelectedButton = selectionControls.createEl("button", {
+      text: "\uC120\uD0DD \uB2E8\uC5B4 \uB73B \uAC00\uC838\uC624\uAE30",
+      cls: "fetch-selected-button"
+    });
+    fetchSelectedButton.addEventListener("click", () => {
+      if (this.selectedWords.size === 0) {
+        new import_obsidian7.Notice("\uC120\uD0DD\uB41C \uB2E8\uC5B4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.");
+        return;
+      }
+      this.showFetchSelectedMeaningsModal();
+    });
+    const wordListEl = container2.createEl("div", { cls: "word-list" });
+    const renderWords = (filteredWords) => {
+      wordListEl.empty();
+      filteredWords.forEach((word) => {
+        this.createWordItem(wordListEl, word);
+      });
+    };
+    searchInput.addEventListener("input", (e) => {
+      const query = e.target.value;
+      const filteredWords = query ? this.databaseManager.searchWords(query) : words;
+      renderWords(filteredWords);
+    });
+    renderWords(words);
+  }
+  createWordItem(container2, word) {
+    const wordEl = container2.createEl("div", { cls: "word-item" });
+    const checkbox = wordEl.createEl("input", {
+      type: "checkbox",
+      cls: "word-checkbox"
+    });
+    checkbox.checked = this.selectedWords.has(word.word);
+    checkbox.addEventListener("change", (e) => {
+      const isChecked = e.target.checked;
+      if (isChecked) {
+        this.selectedWords.add(word.word);
+      } else {
+        this.selectedWords.delete(word.word);
+      }
+    });
+    const wordHeader = wordEl.createEl("div", { cls: "word-header" });
+    const wordTitleEl = wordHeader.createEl("h3", { cls: "word-title" });
+    if (word.pronunciation && word.pronunciation.trim()) {
+      wordTitleEl.textContent = word.word;
+      wordTitleEl.appendText(" ");
+      wordTitleEl.createEl("span", {
+        text: `[${word.pronunciation}]`,
+        cls: "pronunciation"
+      });
+    } else {
+      wordTitleEl.textContent = word.word;
+    }
+    const difficultyBadge = wordHeader.createEl("span", {
+      text: this.getDifficultyText(word.difficulty),
+      cls: `difficulty-badge ${word.difficulty}`
+    });
+    const wordContent = wordEl.createEl("div", { cls: "word-content" });
+    wordContent.createEl("p", {
+      text: `\uB73B: ${word.meanings.join(", ")}`,
+      cls: "word-meanings"
+    });
+    wordContent.createEl("p", {
+      text: `\uBCF5\uC2B5 \uD69F\uC218: ${word.reviewCount}\uD68C`,
+      cls: "review-count"
+    });
+    if (word.lastReviewed) {
+      wordContent.createEl("p", {
+        text: `\uB9C8\uC9C0\uB9C9 \uBCF5\uC2B5: ${formatDate(word.lastReviewed)}`,
+        cls: "last-reviewed"
+      });
+    }
+    const wordActions = wordEl.createEl("div", { cls: "word-actions" });
+    if (this.plugin.settings.enableAdvancedFeatures) {
+      const fetchButton = wordActions.createEl("button", {
+        text: "\uB2E8\uC5B4 \uB73B \uAC00\uC838\uC624\uAE30",
+        cls: "action-button fetch-single-button"
+      });
+      fetchButton.addEventListener("click", () => {
+        this.fetchSingleWordMeaning(word);
+      });
+    }
+    const deleteBtn = wordActions.createEl("button", {
+      text: "\uC0AD\uC81C",
+      cls: "action-button delete-button"
+    });
+    deleteBtn.addEventListener("click", async () => {
+      const confirmModal = new ConfirmModal2(
+        this.app,
+        "\uB2E8\uC5B4 \uC0AD\uC81C",
+        `"${word.word}" \uB2E8\uC5B4\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?`,
+        async () => {
+          await this.databaseManager.removeWord(word.word);
+          this.showCurrentView();
+        }
+      );
+      confirmModal.open();
+    });
+  }
+  showStatistics(container2) {
+    const stats = this.databaseManager.getStatistics();
+    const statsGrid = container2.createEl("div", { cls: "stats-grid" });
+    const basicStats = statsGrid.createEl("div", { cls: "stats-section" });
+    basicStats.createEl("h3", { text: "\uAE30\uBCF8 \uD1B5\uACC4", cls: "stats-title" });
+    this.createStatItem(basicStats, "\uCD1D \uB2E8\uC5B4 \uC218", stats.totalWords.toString());
+    this.createStatItem(basicStats, "\uCD1D \uBCF5\uC2B5 \uD69F\uC218", stats.totalReviews.toString());
+    this.createStatItem(basicStats, "\uC5F0\uC18D \uD559\uC2B5\uC77C", `${stats.streakDays}\uC77C`);
+    this.createStatItem(basicStats, "\uD3C9\uADE0 \uB09C\uC774\uB3C4", stats.averageDifficulty.toFixed(1));
+    const difficultyStats = statsGrid.createEl("div", { cls: "stats-section" });
+    difficultyStats.createEl("h3", { text: "\uB09C\uC774\uB3C4\uBCC4 \uBD84\uD3EC", cls: "stats-title" });
+    this.createStatItem(difficultyStats, "\uC26C\uC6C0", stats.wordsByDifficulty.easy.toString());
+    this.createStatItem(difficultyStats, "\uC88B\uC74C", stats.wordsByDifficulty.good.toString());
+    this.createStatItem(difficultyStats, "\uC5B4\uB824\uC6C0", stats.wordsByDifficulty.hard.toString());
+    const activityStats = statsGrid.createEl("div", { cls: "stats-section" });
+    activityStats.createEl("h3", { text: "\uCD5C\uADFC 7\uC77C \uD65C\uB3D9", cls: "stats-title" });
+    stats.recentActivity.forEach((activity) => {
+      const date = new Date(activity.date).toLocaleDateString("ko-KR", {
+        month: "short",
+        day: "numeric"
+      });
+      this.createStatItem(
+        activityStats,
+        date,
+        `\uD559\uC2B5: ${activity.wordsStudied}, \uBCF5\uC2B5: ${activity.reviewsCompleted}`
+      );
+    });
+  }
+  createStatItem(container2, label, value) {
+    const statEl = container2.createEl("div", { cls: "stat-item" });
+    statEl.createEl("span", { text: label, cls: "stat-label" });
+    statEl.createEl("span", { text: value, cls: "stat-value" });
+  }
+  showAddWord(container2) {
+    const addSection = container2.createEl("div", { cls: "add-word-section" });
+    addSection.createEl("h3", { text: "\uC0C8 \uB2E8\uC5B4 \uCD94\uAC00", cls: "section-title" });
+    const inputEl = addSection.createEl("div", { cls: "word-input-group" });
+    const wordInput = inputEl.createEl("input", {
+      type: "text",
+      placeholder: "\uC601\uB2E8\uC5B4\uB97C \uC785\uB825\uD558\uC138\uC694 (\uC608: beautiful)",
+      cls: "word-input"
+    });
+    const addButton = inputEl.createEl("button", {
+      text: "\uB2E8\uC5B4 \uCD94\uAC00",
+      cls: "add-button"
+    });
+    const addWord = async () => {
+      const word = wordInput.value.trim();
+      if (!word) {
+        addSection.createEl("p", {
+          text: "\uB2E8\uC5B4\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.",
+          cls: "error-message"
+        });
+        return;
+      }
+      try {
+        const wordData = await this.wordService.getWordData(word);
+        const vocabularyCard = {
+          ...wordData,
+          reviewCount: 0,
+          difficulty: "good",
+          lastReviewed: null,
+          addedDate: (/* @__PURE__ */ new Date()).toISOString(),
+          bookId: this.selectedBookId
+        };
+        await this.databaseManager.addWord(vocabularyCard);
+        wordInput.value = "";
+        addSection.createEl("p", {
+          text: `"${word}" \uB2E8\uC5B4\uAC00 \uC131\uACF5\uC801\uC73C\uB85C \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4!`,
+          cls: "success-message"
+        });
+        setTimeout(() => {
+          const successMsg = addSection.querySelector(".success-message");
+          if (successMsg)
+            successMsg.remove();
+        }, 3e3);
+      } catch (error) {
+        addSection.createEl("p", {
+          text: "\uB2E8\uC5B4\uB97C \uCD94\uAC00\uD558\uB294 \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.",
+          cls: "error-message"
+        });
+      }
+    };
+    addButton.addEventListener("click", addWord);
+    wordInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        addWord();
+      }
+    });
+  }
+  getDifficultyText(difficulty) {
+    switch (difficulty) {
+      case "easy":
+        return "\uC26C\uC6C0";
+      case "good":
+        return "\uC88B\uC74C";
+      case "hard":
+        return "\uC5B4\uB824\uC6C0";
+      default:
+        return "\uC88B\uC74C";
+    }
+  }
+  startReview(words) {
+    const reviewModal = new VocabularyReviewModal(this.app, this.plugin, words);
+    reviewModal.open();
+  }
+  showFetchSelectedMeaningsModal() {
+    const selectedWordList = Array.from(this.selectedWords);
+    new FetchSelectedMeaningsModal(this.app, this.plugin, selectedWordList).open();
+  }
+  async fetchSingleWordMeaning(word) {
+    if (!this.hasValidApiKey()) {
+      new import_obsidian7.Notice("LLM API \uD0A4\uAC00 \uC124\uC815\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. \uC124\uC815\uC5D0\uC11C API \uD0A4\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
+      return;
+    }
+    const confirmModal = new ConfirmModal2(
+      this.app,
+      "\uB2E8\uC5B4 \uB73B \uAC00\uC838\uC624\uAE30",
+      `"${word.word}" \uB2E8\uC5B4\uC758 \uB73B\uC744 \uC0C8\uB85C \uAC00\uC838\uC624\uC2DC\uACA0\uC2B5\uB2C8\uAE4C? \uAE30\uC874 \uC815\uBCF4\uAC00\uC5B4\uC50C\uC6CC\uC9D1\uB2C8\uB2E4.`,
+      async () => {
+        try {
+          new import_obsidian7.Notice(`"${word.word}" \uB2E8\uC5B4 \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uB294 \uC911...`);
+          const llmResponse = await this.plugin.llmService.getWordDetails(word.word);
+          if (llmResponse.success) {
+            const wordDetail = llmResponse.data;
+            const wordData = this.plugin.llmService.convertToWordData(wordDetail);
+            const updatedWord = {
+              ...word,
+              meanings: wordData.meanings,
+              examples: wordData.examples,
+              similarWords: wordData.similarWords
+            };
+            await this.plugin.databaseManager.updateWordData(word.word, updatedWord);
+            new import_obsidian7.Notice(`"${word.word}" \uB2E8\uC5B4 \uC815\uBCF4\uAC00 \uC131\uACF5\uC801\uC73C\uB85C \uC5C5\uB370\uC774\uD2B8\uB418\uC5C8\uC2B5\uB2C8\uB2E4!`);
+            this.showCurrentView();
+          } else {
+            new import_obsidian7.Notice(`"${word.word}" \uB2E8\uC5B4 \uC815\uBCF4 \uAC00\uC838\uC624\uAE30 \uC2E4\uD328: ${llmResponse.error}`);
+          }
+        } catch (error) {
+          console.error(`\uB2E8\uC5B4 "${word.word}" \uCC98\uB9AC \uC2E4\uD328:`, error);
+          new import_obsidian7.Notice(`"${word.word}" \uB2E8\uC5B4 \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.`);
+        }
+      }
+    );
+    confirmModal.open();
+  }
+  async refreshBookSelector() {
+    await this.databaseManager.loadAllBooks();
+    const headerEl = this.contentEl.querySelector(".manager-header");
+    if (headerEl) {
+      const bookSelect = headerEl.querySelector(".book-select-dropdown");
+      if (bookSelect) {
+        const currentValue = bookSelect.value;
+        const books = this.databaseManager.getAllBooks();
+        bookSelect.empty();
+        books.forEach((book) => {
+          const option = document.createElement("option");
+          option.value = book.id;
+          option.text = book.name;
+          if (book.id === currentValue || book.id === this.selectedBookId) {
+            option.selected = true;
+            this.selectedBookId = book.id;
+          }
+          bookSelect.appendChild(option);
+        });
+      }
+    }
+    this.showCurrentView();
+  }
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+    document.removeEventListener("bookCreated", this.handleBookCreated.bind(this));
+  }
+};
+var VocabularyReviewModal = class extends import_obsidian7.Modal {
+  constructor(app, plugin, words) {
+    super(app);
+    this.currentIndex = 0;
+    this.showAnswer = false;
+    this.plugin = plugin;
+    this.words = words;
+  }
+  onOpen() {
+    if (this.words.length === 0) {
+      this.close();
+      return;
+    }
+    this.showCurrentWord();
+  }
+  showCurrentWord() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("vocabulary-learning-modal");
+    contentEl.style.setProperty("--review-modal-height", `${this.plugin.settings.reviewModalHeight}vh`);
+    const currentWord = this.words[this.currentIndex];
+    const progressEl = contentEl.createEl("div", { cls: "review-progress" });
+    progressEl.createEl("span", {
+      text: `${this.currentIndex + 1} / ${this.words.length}`,
+      cls: "progress-text"
+    });
+    const cardEl = contentEl.createEl("div", { cls: "review-card" });
+    const deleteButton = cardEl.createEl("button", {
+      text: "\uCE74\uB4DC \uC0AD\uC81C",
+      cls: "card-delete-button"
+    });
+    deleteButton.addEventListener("click", () => this.handleDeleteCard());
+    const wordEl = cardEl.createEl("h1", { cls: "review-word" });
+    if (currentWord.pronunciation && currentWord.pronunciation.trim()) {
+      wordEl.textContent = currentWord.word;
+      wordEl.appendText(" ");
+      wordEl.createEl("span", {
+        text: `[${currentWord.pronunciation}]`,
+        cls: "pronunciation"
+      });
+    } else {
+      wordEl.textContent = currentWord.word;
+    }
+    if (!this.showAnswer) {
+      if (currentWord.similarWords.length > 0) {
+        const similarEl = cardEl.createEl("div", { cls: "similar-words" });
+        similarEl.createEl("h3", { text: "\uC720\uC0AC\uD55C \uB2E8\uC5B4\uB4E4:" });
+        const similarList = similarEl.createEl("ul");
+        currentWord.similarWords.forEach((word) => {
+          similarList.createEl("li", { text: word });
+        });
+      }
+      if (currentWord.examples.length > 0) {
+        const examplesEl = cardEl.createEl("div", { cls: "examples" });
+        examplesEl.createEl("h3", { text: "\uC608\uBB38\uB4E4:" });
+        currentWord.examples.forEach((example) => {
+          examplesEl.createEl("p", { text: example.english, cls: "example" });
+        });
+      }
+      const checkBtn = cardEl.createEl("button", {
+        text: "\uC815\uB2F5 \uD655\uC778\uD558\uAE30",
+        cls: "check-answer-button"
+      });
+      checkBtn.addEventListener("click", () => {
+        this.showAnswer = true;
+        this.showCurrentWord();
+      });
+    } else {
+      const answerEl = cardEl.createEl("div", { cls: "answer-section" });
+      answerEl.createEl("h3", { text: "\uB73B:" });
+      const meaningsList = answerEl.createEl("ul");
+      currentWord.meanings.forEach((meaning) => {
+        meaningsList.createEl("li", { text: meaning });
+      });
+      if (currentWord.examples.length > 0) {
+        answerEl.createEl("h3", { text: "\uC608\uBB38 \uBC88\uC5ED:" });
+        currentWord.examples.forEach((example) => {
+          answerEl.createEl("p", { text: example.korean, cls: "translation" });
+        });
+      }
+      this.createReviewButtons(cardEl);
+    }
+  }
+  createReviewButtons(container2) {
+    const reviewSection = container2.createEl("div", { cls: "review-buttons" });
+    const hardBtn = reviewSection.createEl("button", { text: "\uC5B4\uB824\uC6C0", cls: "review-btn hard" });
+    const goodBtn = reviewSection.createEl("button", { text: "\uC88B\uC74C", cls: "review-btn good" });
+    const easyBtn = reviewSection.createEl("button", { text: "\uC26C\uC6C0", cls: "review-btn easy" });
+    hardBtn.addEventListener("click", () => this.handleReview("hard"));
+    goodBtn.addEventListener("click", () => this.handleReview("good"));
+    easyBtn.addEventListener("click", () => this.handleReview("easy"));
+  }
+  async handleReview(difficulty) {
+    const currentWord = this.words[this.currentIndex];
+    await this.plugin.databaseManager.updateWord(currentWord.word, difficulty);
+    this.currentIndex++;
+    this.showAnswer = false;
+    if (this.currentIndex >= this.words.length) {
+      this.showCompletion();
+    } else {
+      this.showCurrentWord();
+    }
+  }
+  async handleDeleteCard() {
+    const currentWord = this.words[this.currentIndex];
+    const confirmModal = new ConfirmModal2(
+      this.app,
+      "\uB2E8\uC5B4 \uC0AD\uC81C",
+      `"${currentWord.word}" \uB2E8\uC5B4\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?
+
+\uC774 \uC791\uC5C5\uC740 \uB418\uB3CC\uB9B4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`,
+      async () => {
+        try {
+          await this.plugin.databaseManager.removeWord(currentWord.word);
+          this.words.splice(this.currentIndex, 1);
+          if (this.words.length === 0) {
+            this.showCompletion();
+            return;
+          }
+          if (this.currentIndex >= this.words.length) {
+            this.currentIndex = this.words.length - 1;
+          }
+          this.showAnswer = false;
+          this.showCurrentWord();
+        } catch (error) {
+          console.error("\uB2E8\uC5B4 \uC0AD\uC81C \uC911 \uC624\uB958 \uBC1C\uC0DD:", error);
+          new import_obsidian7.Notice("\uB2E8\uC5B4 \uC0AD\uC81C \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.");
+        }
+      }
+    );
+    confirmModal.open();
+  }
+  showCompletion() {
+    const { contentEl } = this;
+    contentEl.empty();
+    const completionEl = contentEl.createEl("div", { cls: "completion" });
+    completionEl.createEl("h2", { text: "\uBCF5\uC2B5 \uC644\uB8CC!" });
+    completionEl.createEl("p", { text: "\uBAA8\uB4E0 \uB2E8\uC5B4\uB97C \uBCF5\uC2B5\uD588\uC2B5\uB2C8\uB2E4." });
+    const closeBtn = completionEl.createEl("button", { text: "\uB2EB\uAE30", cls: "close-btn" });
+    closeBtn.addEventListener("click", () => this.close());
+  }
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+};
+var FetchSelectedMeaningsModal = class extends import_obsidian7.Modal {
+  constructor(app, plugin, selectedWords) {
+    super(app);
+    this.isProcessing = false;
+    this.plugin = plugin;
+    this.selectedWords = selectedWords;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("fetch-selected-meanings-modal");
+    contentEl.createEl("h2", {
+      text: `\uC120\uD0DD\uB41C ${this.selectedWords.length}\uAC1C \uB2E8\uC5B4 \uB73B \uAC00\uC838\uC624\uAE30`,
+      cls: "modal-title"
+    });
+    contentEl.createEl("p", {
+      text: `\uC120\uD0DD\uB41C \uB2E8\uC5B4\uB4E4\uC758 \uC0C1\uC138 \uC815\uBCF4\uB97C LLM API\uB97C \uD1B5\uD574 \uAC00\uC838\uC635\uB2C8\uB2E4.`,
+      cls: "modal-description"
+    });
+    const wordListEl = contentEl.createEl("div", { cls: "selected-words-list" });
+    wordListEl.createEl("h3", { text: "\uC120\uD0DD\uB41C \uB2E8\uC5B4\uB4E4:" });
+    const wordsContainer = wordListEl.createEl("div", { cls: "words-container" });
+    this.selectedWords.forEach((word) => {
+      wordsContainer.createEl("span", {
+        text: word,
+        cls: "selected-word-tag"
+      });
+    });
+    const buttonSection = contentEl.createEl("div", { cls: "button-section" });
+    const fetchButton = buttonSection.createEl("button", {
+      text: "\uB73B \uAC00\uC838\uC624\uAE30",
+      cls: "fetch-button"
+    });
+    fetchButton.addEventListener("click", () => {
+      this.fetchSelectedMeanings();
+    });
+    const cancelButton = buttonSection.createEl("button", {
+      text: "\uCDE8\uC18C",
+      cls: "cancel-button"
+    });
+    cancelButton.addEventListener("click", () => {
+      this.close();
+    });
+    const progressSection = contentEl.createEl("div", { cls: "progress-section display-none" });
+    const progressText = progressSection.createEl("div", { cls: "progress-text" });
+    const progressBar = progressSection.createEl("div", { cls: "progress-bar" });
+    const progressFill = progressBar.createEl("div", { cls: "progress-fill" });
+    const resultSection = contentEl.createEl("div", { cls: "result-section display-none" });
+  }
+  async fetchSelectedMeanings() {
+    if (this.isProcessing)
+      return;
+    this.isProcessing = true;
+    this.showProgress(this.selectedWords.length);
+    try {
+      const result = await this.plugin.llmService.getMultipleWordDetails(this.selectedWords);
+      if (result.success && Array.isArray(result.data)) {
+        const successWords = [];
+        const failedWords = [];
+        for (const wordData of result.data) {
+          try {
+            if (wordData.word && wordData.meanings && wordData.meanings.length > 0) {
+              const existingWord = this.plugin.databaseManager.getWord(wordData.word);
+              if (existingWord) {
+                const updatedWord = {
+                  ...existingWord,
+                  pronunciation: wordData.pronunciation || "",
+                  meanings: wordData.meanings,
+                  examples: wordData.examples || [],
+                  similarWords: wordData.similarWords || []
+                };
+                await this.plugin.databaseManager.updateWordData(wordData.word, updatedWord);
+                successWords.push(wordData.word);
+              }
+            } else {
+              failedWords.push(wordData.word);
+            }
+          } catch (error) {
+            console.error(`\uB2E8\uC5B4 "${wordData.word}" \uC5C5\uB370\uC774\uD2B8 \uC2E4\uD328:`, error);
+            failedWords.push(wordData.word);
+          }
+        }
+        this.hideProgress();
+        this.showResults({ success: successWords, failed: failedWords });
+        if (successWords.length > 0) {
+          new import_obsidian7.Notice(`${successWords.length}\uAC1C\uC758 \uB2E8\uC5B4 \uC815\uBCF4\uB97C \uC131\uACF5\uC801\uC73C\uB85C \uC5C5\uB370\uC774\uD2B8\uD588\uC2B5\uB2C8\uB2E4!`);
+        }
+      } else {
+        this.hideProgress();
+        new import_obsidian7.Notice("\uB2E8\uC5B4 \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uB294\uB370 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4: " + (result.error || "\uC54C \uC218 \uC5C6\uB294 \uC624\uB958"));
+      }
+    } catch (error) {
+      this.hideProgress();
+      new import_obsidian7.Notice("\uB2E8\uC5B4 \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uB294\uB370 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4: " + error.message);
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+  showProgress(totalWords) {
+    const progressSection = this.contentEl.querySelector(".progress-section");
+    const progressText = progressSection.querySelector(".progress-text");
+    progressSection.removeClass("display-none");
+    progressSection.addClass("display-block");
+    progressText.textContent = `\uB2E8\uC5B4 \uC815\uBCF4\uB97C \uAC00\uC838\uC624\uB294 \uC911... (0/${totalWords})`;
+  }
+  hideProgress() {
+    const progressSection = this.contentEl.querySelector(".progress-section");
+    if (progressSection) {
+      progressSection.removeClass("display-block");
+      progressSection.addClass("display-none");
+    }
+  }
+  showResults(results) {
+    const resultSection = this.contentEl.querySelector(".result-section");
+    resultSection.removeClass("display-none");
+    resultSection.addClass("display-block");
+    resultSection.empty();
+    const summaryEl = resultSection.createEl("div", { cls: "results-summary" });
+    if (results.success.length > 0) {
+      const successEl = summaryEl.createEl("div", { cls: "result-item success" });
+      successEl.createEl("span", {
+        text: `\u2705 \uC131\uACF5: ${results.success.length}\uAC1C`,
+        cls: "result-count"
+      });
+      if (results.success.length <= 10) {
+        successEl.createEl("p", {
+          text: results.success.join(", "),
+          cls: "result-words"
+        });
+      }
+    }
+    if (results.failed.length > 0) {
+      const failedEl = summaryEl.createEl("div", { cls: "result-item error" });
+      failedEl.createEl("span", {
+        text: `\u274C \uC2E4\uD328: ${results.failed.length}\uAC1C`,
+        cls: "result-count"
+      });
+      if (results.failed.length <= 10) {
+        failedEl.createEl("p", {
+          text: results.failed.join(", "),
+          cls: "result-words"
+        });
+      }
+    }
+    const buttonSection = resultSection.createEl("div", { cls: "result-buttons" });
+    const closeButton = buttonSection.createEl("button", { text: "\uB2EB\uAE30", cls: "close-button" });
+    closeButton.addEventListener("click", () => this.close());
+  }
+  onClose() {
+    this.isProcessing = false;
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+};
+var ConfirmModal2 = class extends import_obsidian7.Modal {
+  constructor(app, title, message, onConfirm) {
+    super(app);
+    this.title = title;
+    this.message = message;
+    this.onConfirm = onConfirm;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("confirm-modal");
+    contentEl.createEl("h2", { text: this.title, cls: "modal-title" });
+    contentEl.createEl("p", { text: this.message, cls: "modal-message" });
+    const buttonSection = contentEl.createEl("div", { cls: "button-section" });
+    const confirmButton = buttonSection.createEl("button", {
+      text: "\uD655\uC778",
+      cls: "confirm-button primary"
+    });
+    confirmButton.addEventListener("click", () => {
+      this.onConfirm();
+      this.close();
+    });
+    const cancelButton = buttonSection.createEl("button", {
+      text: "\uCDE8\uC18C",
+      cls: "cancel-button"
+    });
+    cancelButton.addEventListener("click", () => this.close());
+  }
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
   }
 };
 
@@ -8264,7 +8311,6 @@ var VocabularyDatabaseManager = class {
             if (file instanceof import_obsidian8.TFile) {
               await this.app.vault.modify(file, content);
             } else {
-              console.error("\uD30C\uC77C\uC774 \uC774\uBBF8 \uC874\uC7AC\uD558\uC9C0\uB9CC TFile\uC774 \uC544\uB2D8:", filePath);
             }
           } else {
             console.error("\uB2E8\uC5B4\uC7A5 \uD30C\uC77C \uC800\uC7A5 \uC2E4\uD328:", error);

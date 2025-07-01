@@ -98,16 +98,16 @@ export class StatisticsView {
         progressBarEl.createEl('div', { text: `전체 진행도: ${clampedProgress}%`, cls: 'progress-label' });
         
         const progressBar = progressBarEl.createEl('div', { cls: 'progress-bar' });
-        const progressFill = progressBar.createEl('div', { cls: 'progress-fill' });
+        const progressFill = progressBar.createEl('div', { cls: 'progress-fill progress-bar-fill' });
         progressFill.style.width = `${clampedProgress}%`;
         
         // 진행도에 따른 색상 변경
         if (clampedProgress < 30) {
-            progressFill.style.backgroundColor = '#f87171';
+            progressFill.addClass('progress-low');
         } else if (clampedProgress < 70) {
-            progressFill.style.backgroundColor = '#fbbf24';
+            progressFill.addClass('progress-medium');
         } else {
-            progressFill.style.backgroundColor = '#4ade80';
+            progressFill.addClass('progress-high');
         }
     }
 

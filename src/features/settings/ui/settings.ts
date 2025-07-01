@@ -319,14 +319,16 @@ export class VocabularySettingTab extends PluginSettingTab {
 
         // 폴더 목록 가져오기
         const folders = this.app.vault.getAllLoadedFiles()
-            .filter(f => f instanceof TFolder) as TFolder[];
+            .filter(f => f instanceof TFolder);
 
         new Setting(containerEl)
             .setName('단어장 저장 폴더')
             .setDesc('단어장 파일들이 저장될 폴더를 선택하세요. (기본값: Vocabulary)')
             .addDropdown(dropdown => {
                 folders.forEach(folder => {
-                    dropdown.addOption(folder.path, folder.path);
+                    if (folder instanceof TFolder) {
+                        dropdown.addOption(folder.path, folder.path);
+                    }
                 });
                 dropdown.setValue(this.plugin.settings.vocabularyFolderPath);
                 dropdown.onChange(async (value) => {
@@ -479,7 +481,8 @@ export class VocabularySettingTab extends PluginSettingTab {
         allTtsSettings.forEach(setting => {
             const element = setting as HTMLElement;
             if (isEnabled) {
-                element.style.opacity = '1';
+                element.removeClass('settings-disabled');
+                element.addClass('settings-enabled');
                 const buttons = element.querySelectorAll('button');
                 const dropdowns = element.querySelectorAll('select');
                 const sliders = element.querySelectorAll('input[type="range"]');
@@ -492,7 +495,8 @@ export class VocabularySettingTab extends PluginSettingTab {
                 toggles.forEach(toggle => (toggle as HTMLInputElement).disabled = false);
                 inputs.forEach(input => (input as HTMLInputElement).disabled = false);
             } else {
-                element.style.opacity = '0.5';
+                element.removeClass('settings-enabled');
+                element.addClass('settings-disabled');
                 const buttons = element.querySelectorAll('button');
                 const dropdowns = element.querySelectorAll('select');
                 const sliders = element.querySelectorAll('input[type="range"]');
@@ -652,7 +656,8 @@ export class VocabularySettingTab extends PluginSettingTab {
         const stepsList = guideEl.createEl('ol', { attr: { style: 'margin: 0; padding-left: 20px; line-height: 1.6;' } });
         
         const step1 = stepsList.createEl('li');
-        step1.innerHTML = '<strong>Google Cloud Console 접속:</strong> ';
+        step1.createEl('strong', { text: 'Google Cloud Console 접속:' });
+        step1.appendText(' ');
         const step1Link = step1.createEl('a', { 
             text: 'console.cloud.google.com',
             href: 'https://console.cloud.google.com',
@@ -663,10 +668,12 @@ export class VocabularySettingTab extends PluginSettingTab {
         });
         
         const step2 = stepsList.createEl('li');
-        step2.innerHTML = '<strong>프로젝트 선택/생성:</strong> 기존 프로젝트를 선택하거나 새 프로젝트를 생성합니다.';
+        step2.createEl('strong', { text: '프로젝트 선택/생성:' });
+        step2.appendText(' 기존 프로젝트를 선택하거나 새 프로젝트를 생성합니다.');
         
         const step3 = stepsList.createEl('li');
-        step3.innerHTML = '<strong>Text-to-Speech API 활성화:</strong> ';
+        step3.createEl('strong', { text: 'Text-to-Speech API 활성화:' });
+        step3.appendText(' ');
         const step3Link = step3.createEl('a', {
             text: 'API 라이브러리에서 활성화',
             href: 'https://console.cloud.google.com/apis/library/texttospeech.googleapis.com',
@@ -677,15 +684,19 @@ export class VocabularySettingTab extends PluginSettingTab {
         });
         
         const step4 = stepsList.createEl('li');
-        step4.innerHTML = '<strong>API 키 생성:</strong> 사용자 인증 정보 > API 키 > 새 API 키 생성';
+        step4.createEl('strong', { text: 'API 키 생성:' });
+        step4.appendText(' 사용자 인증 정보 > API 키 > 새 API 키 생성');
         
         const step5 = stepsList.createEl('li');
-        step5.innerHTML = '<strong>API 키 제한 설정 (권장):</strong> 키 제한 > API 제한 > Cloud Text-to-Speech API 선택';
+        step5.createEl('strong', { text: 'API 키 제한 설정 (권장):' });
+        step5.appendText(' 키 제한 > API 제한 > Cloud Text-to-Speech API 선택');
         
         const warningEl = guideEl.createEl('div', { 
             attr: { style: 'margin-top: 10px; padding: 8px; background-color: var(--background-modifier-error-rgb); border-radius: 3px; font-size: 0.9em;' }
         });
-        warningEl.innerHTML = '⚠️ <strong>중요:</strong> Text-to-Speech API가 활성화되지 않은 경우 "API_KEY_SERVICE_BLOCKED" 오류가 발생합니다.';
+        warningEl.appendText('⚠️ ');
+        warningEl.createEl('strong', { text: '중요:' });
+        warningEl.appendText(' Text-to-Speech API가 활성화되지 않은 경우 "API_KEY_SERVICE_BLOCKED" 오류가 발생합니다.');
 
         // Google Cloud API 키 설정
         new Setting(containerEl)
@@ -838,7 +849,7 @@ export class VocabularySettingTab extends PluginSettingTab {
     private updateGoogleCloudVoices(): void {
         const voiceDropdown = this.containerEl.querySelector('.google-cloud-voice-setting select') as HTMLSelectElement;
         if (voiceDropdown) {
-            voiceDropdown.innerHTML = '';
+            voiceDropdown.empty();
             const dropdown = { addOption: (value: string, text: string) => {
                 const option = document.createElement('option');
                 option.value = value;

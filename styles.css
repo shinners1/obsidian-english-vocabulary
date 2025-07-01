@@ -1412,3 +1412,69 @@
 .confirm-modal .cancel-button:hover {
   background: var(--background-modifier-border-hover);
 }
+
+/* 설정 패널 스타일 */
+.settings-enabled {
+  opacity: 1;
+}
+
+.settings-disabled {
+  opacity: 0.5;
+}
+
+.settings-disabled button,
+.settings-disabled select,
+.settings-disabled input[type="range"],
+.settings-disabled input[type="checkbox"],
+.settings-disabled input[type="text"] {
+  pointer-events: none;
+}
+
+/* 추가 유틸리티 클래스들 */
+.display-none {
+  display: none !important;
+}
+
+.display-block {
+  display: block !important;
+}
+
+.opacity-full {
+  opacity: 1;
+}
+
+.opacity-half {
+  opacity: 0.5;
+}
+
+/* 진행률 바 스타일 */
+.progress-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.progress-low {
+  background-color: #f87171 !important;
+}
+
+.progress-medium {
+  background-color: #fbbf24 !important;
+}
+
+.progress-high {
+  background-color: #4ade80 !important;
+}
+
+/* 난이도별 색상 */
+.difficulty-easy-color {
+  background-color: #4caf50;
+}
+
+.difficulty-good-color {
+  background-color: #2196f3;
+}
+
+.difficulty-hard-color {
+  background-color: #f44336;
+}

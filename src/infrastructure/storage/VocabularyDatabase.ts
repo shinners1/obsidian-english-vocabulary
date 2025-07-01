@@ -179,7 +179,8 @@ export class VocabularyDatabaseManager {
                         if (file instanceof TFile) {
                             await this.app.vault.modify(file, content);
                         } else {
-                            console.error('파일이 이미 존재하지만 TFile이 아님:', filePath);
+                            // 파일이 이미 존재하지만 TFile이 아닌 경우 (예: 폴더)
+                            // 이는 정상적인 상황일 수 있으므로 조용히 처리
                         }
                     } else {
                         console.error('단어장 파일 저장 실패:', error);

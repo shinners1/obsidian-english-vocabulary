@@ -233,7 +233,7 @@ export class MarkdownDatabase {
 
         return folder.children
             .filter(file => file instanceof TFile && file.extension === 'md')
-            .map(file => file as TFile);
+            .filter((file): file is TFile => file instanceof TFile);
     }
 
     private async writeFile(filePath: string, content: string): Promise<void> {

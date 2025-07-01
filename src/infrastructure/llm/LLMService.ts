@@ -657,13 +657,39 @@ JSON 형식으로만 응답해주세요. 다른 설명은 포함하지 마세요
         // 4. 객체 끝의 쉼표 제거
         fixed = fixed.replace(/,\s*\}/g, '}');
         
-        // 5. 문자열 내의 이스케이프되지 않은 따옴표 처리
-        fixed = fixed.replace(/(?<!\\)"/g, (match, offset) => {
-            // 문자열 내부의 따옴표인지 확인
-            const before = fixed.substring(0, offset);
-            const quoteCount = (before.match(/"/g) || []).length;
-            return quoteCount % 2 === 0 ? match : '\\"';
-        });
+        // 5. 문자열 내의 이스케이프되지 않은 따옴표 처리 (lookbehind 없이)
+        let result = '';
+        let inString = false;
+        let escaped = false;
+        
+        for (let i = 0; i < fixed.length; i++) {
+            const char = fixed[i];
+            const prevChar = i > 0 ? fixed[i - 1] : '';
+            
+            if (char === '"' && !escaped) {
+                if (inString) {
+                    // 문자열 종료
+                    inString = false;
+                    result += char;
+                } else {
+                    // 문자열 시작
+                    inString = true;
+                    result += char;
+                }
+            } else if (char === '"' && escaped) {
+                // 이미 이스케이프된 따옴표
+                result += char;
+            } else if (char === '"' && inString && !escaped) {
+                // 문자열 내부의 이스케이프되지 않은 따옴표
+                result += '\\"';
+            } else {
+                result += char;
+            }
+            
+            escaped = (char === '\\' && !escaped);
+        }
+        
+        fixed = result;
         
         return fixed;
     }

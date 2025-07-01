@@ -6,6 +6,7 @@ import { WordService } from '../../../infrastructure/external/WordService';
 import { LLMService } from '../../../infrastructure/llm/LLMService';
 import { VocabularyModal } from '../../vocabulary-learning/ui/VocabularyModal';
 import { AddBookModal } from './AddBookModal';
+import { AddWordsModal } from '../../word-management/ui/AddWordsModal';
 import { formatDate } from '../../../utils';
 
 export class VocabularyManagerModal extends Modal {
@@ -68,15 +69,9 @@ export class VocabularyManagerModal extends Modal {
 
     private createBookSelectorHeader() {
         const headerEl = this.contentEl.createEl('div', { cls: 'manager-header' });
-        headerEl.style.display = 'flex';
-        headerEl.style.alignItems = 'center';
-        headerEl.style.gap = '18px';
-        headerEl.style.marginBottom = '18px';
 
         const books = this.databaseManager.getAllBooks();
         const bookSelect = headerEl.createEl('select', { cls: 'book-select-dropdown' });
-        bookSelect.style.height = '38px';
-        bookSelect.style.fontSize = '16px';
         books.forEach(book => {
             const option = document.createElement('option');
             option.value = book.id;
@@ -159,8 +154,8 @@ export class VocabularyManagerModal extends Modal {
         });
         const addBtn = navEl.createEl('button', { text: '단어 추가', cls: 'nav-button' });
         addBtn.addEventListener('click', () => {
-            this.currentView = 'add';
-            this.showCurrentView();
+            this.close();
+            new AddWordsModal(this.app, this.plugin, this.selectedBookId).open();
         });
         const startLearningButton = navEl.createEl('button', { 
             text: '전체 영어 단어 학습 시작',
@@ -276,7 +271,12 @@ export class VocabularyManagerModal extends Modal {
         
         const wordTitleEl = wordHeader.createEl('h3', { cls: 'word-title' });
         if (word.pronunciation && word.pronunciation.trim()) {
-            wordTitleEl.innerHTML = `${word.word} <span class="pronunciation">[${word.pronunciation}]</span>`;
+            wordTitleEl.textContent = word.word;
+            wordTitleEl.appendText(' ');
+            wordTitleEl.createEl('span', { 
+                text: `[${word.pronunciation}]`,
+                cls: 'pronunciation'
+            });
         } else {
             wordTitleEl.textContent = word.word;
         }
@@ -514,7 +514,7 @@ export class VocabularyManagerModal extends Modal {
                 const books = this.databaseManager.getAllBooks();
                 
                 // 기존 옵션들 제거
-                bookSelect.innerHTML = '';
+                bookSelect.empty();
                 
                 // 새로운 옵션들 추가
                 books.forEach(book => {
@@ -592,7 +592,12 @@ class VocabularyReviewModal extends Modal {
         
         const wordEl = cardEl.createEl('h1', { cls: 'review-word' });
         if (currentWord.pronunciation && currentWord.pronunciation.trim()) {
-            wordEl.innerHTML = `${currentWord.word} <span class="pronunciation">[${currentWord.pronunciation}]</span>`;
+            wordEl.textContent = currentWord.word;
+            wordEl.appendText(' ');
+            wordEl.createEl('span', { 
+                text: `[${currentWord.pronunciation}]`,
+                cls: 'pronunciation'
+            });
         } else {
             wordEl.textContent = currentWord.word;
         }
@@ -775,15 +780,13 @@ class FetchSelectedMeaningsModal extends Modal {
             this.close();
         });
 
-        const progressSection = contentEl.createEl('div', { cls: 'progress-section' });
-        progressSection.style.display = 'none';
+        const progressSection = contentEl.createEl('div', { cls: 'progress-section display-none' });
         
         const progressText = progressSection.createEl('div', { cls: 'progress-text' });
         const progressBar = progressSection.createEl('div', { cls: 'progress-bar' });
         const progressFill = progressBar.createEl('div', { cls: 'progress-fill' });
 
-        const resultSection = contentEl.createEl('div', { cls: 'result-section' });
-        resultSection.style.display = 'none';
+        const resultSection = contentEl.createEl('div', { cls: 'result-section display-none' });
     }
 
     private async fetchSelectedMeanings() {
@@ -845,20 +848,23 @@ class FetchSelectedMeaningsModal extends Modal {
         const progressSection = this.contentEl.querySelector('.progress-section') as HTMLElement;
         const progressText = progressSection.querySelector('.progress-text') as HTMLElement;
         
-        progressSection.style.display = 'block';
+        progressSection.removeClass('display-none');
+        progressSection.addClass('display-block');
         progressText.textContent = `단어 정보를 가져오는 중... (0/${totalWords})`;
     }
 
     private hideProgress() {
         const progressSection = this.contentEl.querySelector('.progress-section') as HTMLElement;
         if (progressSection) {
-            progressSection.style.display = 'none';
+            progressSection.removeClass('display-block');
+            progressSection.addClass('display-none');
         }
     }
 
     private showResults(results: { success: string[]; failed: string[] }) {
         const resultSection = this.contentEl.querySelector('.result-section') as HTMLElement;
-        resultSection.style.display = 'block';
+        resultSection.removeClass('display-none');
+        resultSection.addClass('display-block');
         resultSection.empty();
 
         const summaryEl = resultSection.createEl('div', { cls: 'results-summary' });

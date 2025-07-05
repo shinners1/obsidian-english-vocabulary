@@ -158,7 +158,7 @@ export class VocabularyManagerModal extends Modal {
             new AddWordsModal(this.app, this.plugin, this.selectedBookId).open();
         });
         const startLearningButton = navEl.createEl('button', { 
-            text: '전체 영어 단어 학습 시작',
+            text: '영어 단어 학습 시작',
             cls: 'nav-button'
         });
         startLearningButton.addEventListener('click', () => {

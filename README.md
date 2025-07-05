@@ -193,16 +193,16 @@ If you find this plugin helpful, please consider:
 - **3단계 평가**: 개인화된 학습 곡선을 위한 어려움/보통/쉬움 평가 시스템
 
 ### 🎯 학습 도구
-- **플래시카드 인터페이스**: 2단계 공개 방식의 Anki 스타일 학습 경험
-- **TTS 발음**: 정확한 발음을 위한 다양한 텍스트 음성 변환 제공업체
-- **다중 단어장**: 주제, 난이도 또는 개인 취향별로 단어 정리
+- **플래시카드 인터페이스**: Anki 스타일 학습 경험
+- **TTS 발음**: 단어 이해를 돕기 위한 텍스트 음성 변환 
+- **다중 단어장**: 주제, 난이도 등 여러 단어장 생성 및 관리
 - **진도 추적**: 연속 학습일, 성공률 및 학습 분석을 포함한 상세 통계
 
-### 🔧 기술적 특징
+### 🔧 특징
 - **마크다운 기반 저장**: 모든 단어 데이터를 읽기 가능한 마크다운 파일로 저장
-- **클린 아키텍처**: SOLID 원칙을 따르는 잘 구조화되고 유지보수 가능한 코드베이스
 - **로드 밸런싱**: 과도한 학습량을 방지하기 위해 복습 세션을 균등하게 분배
 - **보안 API 저장**: 모든 API 키는 암호화되어 저장
+
 
 ## 🚀 빠른 시작
 
@@ -221,11 +221,9 @@ If you find this plugin helpful, please consider:
 4. **진도 추적**: 학습 통계 및 연속 기록 모니터링
 
 ### 사용 가능한 명령어
-- `English Vocabulary: Start Learning` - 플래시카드 학습 세션 시작
-- `English Vocabulary: View Vocabulary Books` - 단어 모음 관리
-- `English Vocabulary: Add Words` - 현재 단어장에 새 단어 추가
-- `English Vocabulary: Review Statistics` - 학습 진도 보기
-- `English Vocabulary: Settings` - 플러그인 옵션 구성
+- `English Vocabulary: 단어 학습 시작` - 플래시카드 학습 세션 시작
+- `English Vocabulary: 단어장 보기` - 단어 모음 관리
+- `English Vocabulary: 단어 추가` - 현재 단어장에 새 단어들 추가
 
 ### 학습 인터페이스
 1. **첫 번째 단계**: 영어 단어, 발음, 유사 단어 및 예문 표시
@@ -234,31 +232,29 @@ If you find this plugin helpful, please consider:
 
 ## ⚙️ 설정
 
-### AI 통합 (선택사항이지만 권장)
 향상된 학습 경험을 위한 AI 서비스 구성:
 
-- **OpenAI**: 고품질 콘텐츠 생성을 위한 GPT 모델
-- **Anthropic Claude**: 미묘한 이해력을 가진 고급 AI
-- **Google AI**: 다양한 콘텐츠를 위한 Gemini 모델
+- OpenAI ChatGPT
+- Anthropic Claude
+- Google Gemini
 
 ### TTS 설정
 - **음성 선택**: 사용 가능한 시스템 음성 중에서 선택
 - **발화 속도**: 발음 속도 조정 (0.5 - 2.0)
 - **제공업체 옵션**: 
-  - 브라우저 TTS (내장)
   - Google Cloud TTS (API 필요)
   - Chatterbox TTS
 
 ### 학습 설정
 - **일일 목표**: 하루에 학습할 목표 단어 수 설정
 - **복습 배치 크기**: 복습 세션당 카드 수
-- **자동 오디오 재생**: 자동 발음 활성화
+- **자동 오디오 재생**: 자동 발음 듣기
 
 ## 🧪 간격 반복 알고리즘
 
 이 플러그인은 간격 반복의 표준인 **SM-2 (SuperMemo-2) 알고리즘**을 구현합니다:
 
-### 수학적 기초
+
 - **E-Factor 업데이트**: `EF_new = EF_old + (0.1 - (3-q)×(0.08 + (3-q)×0.02))`
 - **복습 간격**: 
   - 첫 번째 복습: 1일
@@ -314,7 +310,7 @@ wordCount: 42
 
 **examples:**
 - Keep your word. (약속을 지켜라)
-- A word to the wise is sufficient. (현명한 자에게는 한 마디면 충분하다)
+  - A word to the wise is sufficient. (현명한 자에게는 한 마디면 충분하다)
 ```
 
 ## 🤝 기여하기
@@ -344,8 +340,6 @@ MIT 라이선스 - 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세
 
 - Piotr Wozniak(SuperMemo)의 SM-2 알고리즘
 - Anki의 간격 반복 시스템에서 영감을 받음
-- 놀라운 Obsidian 커뮤니티를 위해 제작
-- 모든 기여자와 테스터에게 특별한 감사
 
 ## 📮 지원
 
@@ -355,7 +349,7 @@ MIT 라이선스 - 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세
 
 ---
 
-이 플러그인이 도움이 되었다면 다음을 고려해 주세요:
-- ⭐ 저장소에 별 주기
-- 💝 [커피 한 잔 사주기](https://buymeacoffee.com/obsidianvop)
-- 📢 다른 영어 학습자들과 공유하기
+이 플러그인이 도움이 되었다면 :
+- ⭐ 별 클릭해주기
+- 💝 [Buy me a coffee](https://buymeacoffee.com/obsidianvop)
+- 📢 다른 사람들에게 본 플러그인 공유하기

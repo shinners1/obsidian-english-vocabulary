@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Vocabulary Learning</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 English Vocabulary Learning</h1>
+            <p>AI-powered vocabulary learning with spaced repetition</p>
+        </header>
+        
+        <main>
+            <div class="card-container">
+                <div class="vocabulary-card" id="vocab-card">
+                    <div class="card-front">
+                        <h2 id="word-text">Click "Start Learning" to begin</h2>
+                        <button id="show-meaning-btn" class="btn btn-primary" style="display: none;">Show Meaning</button>
+                    </div>
+                    <div class="card-back" style="display: none;">
+                        <div id="word-meaning"></div>
+                        <div id="word-pronunciation"></div>
+                        <div id="word-examples"></div>
+                        <div class="review-buttons">
+                            <button id="btn-again" class="btn btn-again">Again</button>
+                            <button id="btn-hard" class="btn btn-hard">Hard</button>
+                            <button id="btn-good" class="btn btn-good">Good</button>
+                            <button id="btn-easy" class="btn btn-easy">Easy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="start-btn" class="btn btn-primary">Start Learning</button>
+                <button id="add-word-btn" class="btn btn-secondary">Add Word</button>
+                <button id="stats-btn" class="btn btn-secondary">Statistics</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="main.js"></script>
+    <script>
+        // Web-specific initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('English Vocabulary Learning Web App loaded');
+            
+            // Initialize the vocabulary system
+            if (typeof window.vocabularyPlugin !== 'undefined') {
+                window.vocabularyPlugin.init();
+            }
+        });
+    </script>
+</body>
+</html>

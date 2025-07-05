@@ -1,5 +1,7 @@
 # English Vocabulary Learning Plugin for Obsidian
 
+[한국어 설명](https://github.com/shinners1/obsidian-english-vocabulary?tab=readme-ov-file#obsidian-%EC%98%81%EC%96%B4-%EB%8B%A8%EC%96%B4-%ED%95%99%EC%8A%B5-%ED%94%8C%EB%9F%AC%EA%B7%B8%EC%9D%B8)
+
 An AI-powered English vocabulary learning plugin for Obsidian that uses spaced repetition and flashcards to help you memorize English words effectively.
 
 ## ✨ Features

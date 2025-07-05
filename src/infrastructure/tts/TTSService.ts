@@ -87,6 +87,23 @@ class NoOpTTSService implements TTSService {
     destroy(): void {
         // 아무것도 하지 않음
     }
+
+    // 캐시 관리 메서드들 (No-Op 구현)
+    async getCacheInfo() {
+        return {
+            totalFiles: 0,
+            totalSize: 0,
+            formattedSize: '0 B'
+        };
+    }
+
+    async clearCache(): Promise<boolean> {
+        return true;
+    }
+
+    updateCacheFolder(vocabularyFolderPath: string): void {
+        // 아무것도 하지 않음
+    }
 }
 
 // 호환성을 위한 레거시 인터페이스

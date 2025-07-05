@@ -219,6 +219,14 @@ export class VocabularyManagerModal extends Modal {
             this.showCurrentView();
         });
 
+        const selectWordsWithoutMeaningsBtn = selectionControls.createEl('button', { 
+            text: '뜻 없는 단어 선택',
+            cls: 'select-no-meanings-button'
+        });
+        selectWordsWithoutMeaningsBtn.addEventListener('click', () => {
+            this.selectWordsWithoutMeanings(words);
+        });
+
         const fetchSelectedButton = selectionControls.createEl('button', { 
             text: '선택 단어 뜻 가져오기',
             cls: 'fetch-selected-button'
@@ -438,8 +446,9 @@ export class VocabularyManagerModal extends Modal {
         });
     }
 
-    private getDifficultyText(difficulty: 'easy' | 'good' | 'hard'): string {
+    private getDifficultyText(difficulty: 'none' | 'easy' | 'good' | 'hard'): string {
         switch (difficulty) {
+            case 'none': return '미학습';
             case 'easy': return '쉬움';
             case 'good': return '좋음';
             case 'hard': return '어려움';
@@ -531,6 +540,52 @@ export class VocabularyManagerModal extends Modal {
         }
         
         // 현재 뷰 새로고침
+        this.showCurrentView();
+    }
+
+    private selectWordsWithoutMeanings(words: VocabularyCard[]) {
+        // 뜻이 없는 단어들 찾기
+        const wordsWithoutMeanings = words.filter(word => {
+            // meanings 배열이 없거나 비어있는 경우
+            if (!word.meanings || word.meanings.length === 0) {
+                return true;
+            }
+            
+            // meanings 배열에 빈 문자열만 있는 경우
+            if (word.meanings.length === 1 && word.meanings[0].trim() === '') {
+                return true;
+            }
+            
+            // "의미를 찾을 수 없습니다." 같은 기본 메시지가 있는 경우
+            const invalidMeanings = word.meanings.filter(meaning => {
+                const cleanMeaning = meaning.trim();
+                return cleanMeaning === '' || 
+                       cleanMeaning === '의미를 찾을 수 없습니다.' ||
+                       cleanMeaning === 'Meaning not found' ||
+                       cleanMeaning === '뜻을 찾을 수 없습니다.' ||
+                       cleanMeaning.includes('찾을 수 없습니다');
+            });
+            
+            // 모든 의미가 유효하지 않은 경우
+            return invalidMeanings.length === word.meanings.length;
+        });
+
+        if (wordsWithoutMeanings.length === 0) {
+            new Notice('뜻이 없는 단어가 없습니다.');
+            return;
+        }
+
+        // 기존 선택 초기화
+        this.selectedWords.clear();
+        
+        // 뜻이 없는 단어들을 선택
+        wordsWithoutMeanings.forEach(word => {
+            this.selectedWords.add(word.word);
+        });
+
+        new Notice(`${wordsWithoutMeanings.length}개의 뜻 없는 단어를 선택했습니다.`);
+        
+        // 뷰 새로고침하여 체크박스 상태 업데이트
         this.showCurrentView();
     }
 

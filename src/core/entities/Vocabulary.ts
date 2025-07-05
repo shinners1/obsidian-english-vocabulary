@@ -33,7 +33,7 @@ export class VocabularyCard {
             wordData.similarWords,
             wordData.examples,
             0, // 초기 복습 횟수
-            'good', // 초기 난이도
+            'none', // 초기 난이도 (학습 전)
             null, // 초기 복습 날짜
             new Date().toISOString(), // 추가 날짜
             bookId
@@ -98,10 +98,14 @@ export class VocabularyCard {
         
         // 난이도에 따른 복습 주기 조정
         const difficultyMultiplier = {
+            'none': 0, // 학습하지 않은 단어는 즉시 복습 필요
             'hard': 0.5,
             'good': 1,
             'easy': 2
         };
+        
+        // 'none' 난이도인 경우 항상 복습 필요
+        if (this.difficulty === 'none') return true;
         
         const adjustedInterval = reviewInterval * difficultyMultiplier[this.difficulty];
         return daysDiff >= adjustedInterval;
@@ -114,6 +118,7 @@ export class VocabularyCard {
         
         // 난이도 보너스
         const difficultyBonus = {
+            'none': 0,  // 학습하지 않은 단어는 보너스 없음
             'easy': 20,
             'good': 10,
             'hard': 0
@@ -171,7 +176,7 @@ export class VocabularyCard {
             [], // similarWords
             data.examples?.map(ex => ({ english: ex, korean: '' })) || [], // examples with Example type
             0, // reviewCount
-            'good', // difficulty
+            'none', // difficulty - 초기 난이도 (학습 전)
             null, // lastReviewed
             new Date().toISOString(), // addedDate
             data.bookId || 'default'

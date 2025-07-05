@@ -13,7 +13,7 @@ import { ScheduleInfo } from './core/algorithms/SpacedRepetitionAlgorithm';
 
 export interface VocabularyCard extends WordData {
     reviewCount: number;
-    difficulty: 'easy' | 'good' | 'hard';
+    difficulty: 'none' | 'easy' | 'good' | 'hard';
     lastReviewed: string | null;
     addedDate: string;
     bookId: string;

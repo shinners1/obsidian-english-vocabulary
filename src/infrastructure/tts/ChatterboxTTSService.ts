@@ -264,6 +264,25 @@ export class ChatterboxTTSService implements TTSService {
         return { ...this.settings };
     }
 
+    // 캐시 관리 메서드들 (Chatterbox는 캐시를 지원하지 않으므로 더미 구현)
+    async getCacheInfo() {
+        // Chatterbox TTS는 캐시를 지원하지 않음
+        return {
+            totalFiles: 0,
+            totalSize: 0,
+            formattedSize: '0 B'
+        };
+    }
+
+    async clearCache(): Promise<boolean> {
+        // Chatterbox TTS는 캐시를 지원하지 않으므로 항상 true 반환
+        return true;
+    }
+
+    updateCacheFolder(vocabularyFolderPath: string): void {
+        // Chatterbox TTS는 캐시를 지원하지 않으므로 아무것도 하지 않음
+    }
+
     // 리소스 정리
     destroy(): void {
         this.stopSpeaking();

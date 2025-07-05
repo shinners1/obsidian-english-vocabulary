@@ -1145,7 +1145,7 @@ export class VocabularySettingTab extends PluginSettingTab {
         });
         
         cacheHeaderEl.createEl('h4', { text: '🗂️ TTS 캐시 관리', attr: { style: 'margin: 0 0 5px 0; color: var(--interactive-accent);' } });
-        cacheHeaderEl.createEl('p', { text: '음성 파일을 로컬에 캐시하여 API 비용을 절약하고 응답 속도를 향상시킵니다.', attr: { style: 'margin: 0; font-size: 0.9em; opacity: 0.8;' } });
+        cacheHeaderEl.createEl('p', { text: '음성 파일을 로컬에 캐시하여 API 비용을 절약하고 응답 속도를 향상시킵니다. 아래에서 현재 캐시 폴더의 용량과 파일 수를 확인할 수 있습니다.', attr: { style: 'margin: 0; font-size: 0.9em; opacity: 0.8;' } });
 
         // 캐시 활성화 설정
         new Setting(containerEl)
@@ -1161,8 +1161,8 @@ export class VocabularySettingTab extends PluginSettingTab {
 
         // 캐시 정보 표시
         const cacheInfoSetting = new Setting(containerEl)
-            .setName('캐시 현황')
-            .setDesc('현재 저장된 TTS 캐시 파일 정보')
+            .setName('📊 캐시 현황')
+            .setDesc('캐시 정보를 불러오는 중...')
             .setClass('tts-cache-info-setting');
 
         this.updateCacheInfo(cacheInfoSetting);
@@ -1207,19 +1207,45 @@ export class VocabularySettingTab extends PluginSettingTab {
 
     private async updateCacheInfo(setting: Setting): Promise<void> {
         try {
-            // Google Cloud TTS 서비스에서 캐시 정보 가져오기
+            // TTSCacheManager에서 캐시 정보 가져오기
             if (this.plugin.ttsService && 'getCacheInfo' in this.plugin.ttsService) {
                 const cacheInfo = await (this.plugin.ttsService as any).getCacheInfo();
                 
-                const infoText = `파일 개수: ${cacheInfo.totalFiles}개 | 용량: ${cacheInfo.formattedSize}`;
-                setting.setDesc(`현재 저장된 TTS 캐시 파일 정보 - ${infoText}`);
+                // 더 자세한 캐시 정보 표시
+                let detailedInfo = '';
+                if (cacheInfo.totalFiles === 0) {
+                    detailedInfo = '캐시된 파일이 없습니다.';
+                } else {
+                    detailedInfo = `파일 개수: ${cacheInfo.totalFiles}개 | 총 용량: ${cacheInfo.formattedSize}`;
+                    
+                    // 평균 파일 크기 계산
+                    if (cacheInfo.totalFiles > 0 && cacheInfo.totalSize > 0) {
+                        const avgSize = cacheInfo.totalSize / cacheInfo.totalFiles;
+                        const avgFormatted = this.formatFileSize(avgSize);
+                        detailedInfo += ` | 평균 크기: ${avgFormatted}`;
+                    }
+                }
+                
+                // 캐시 폴더 경로 정보도 표시
+                const cacheFolder = `${this.plugin.settings.vocabularyFolderPath}/cache/tts`;
+                setting.setDesc(`캐시 현황 (${cacheFolder}) - ${detailedInfo}`);
             } else {
-                setting.setDesc('현재 저장된 TTS 캐시 파일 정보 - 캐시 서비스를 사용할 수 없습니다.');
+                setting.setDesc('캐시 현황 - TTS 캐시 서비스를 사용할 수 없습니다.');
             }
         } catch (error) {
             console.error('캐시 정보 업데이트 오류:', error);
-            setting.setDesc('현재 저장된 TTS 캐시 파일 정보 - 정보를 가져오는 중 오류가 발생했습니다.');
+            setting.setDesc('캐시 현황 - 정보를 가져오는 중 오류가 발생했습니다.');
         }
+    }
+
+    private formatFileSize(bytes: number): string {
+        if (bytes === 0) return '0 B';
+        
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
     private async clearTTSCache(): Promise<boolean> {

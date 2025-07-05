@@ -291,7 +291,7 @@ export class VocabularyDatabaseManager {
         const similarWords: string[] = [];
         const examples: { english: string; korean: string }[] = [];
         let reviewCount = 0;
-        let difficulty: 'easy' | 'good' | 'hard' = 'good';
+        let difficulty: 'none' | 'easy' | 'good' | 'hard' = 'none'; // 초기 난이도 (학습 전)
         let lastReviewed: string | null = null;
         let addedDate = new Date().toISOString();
         let scheduleInfo: any = undefined;
@@ -592,7 +592,7 @@ export class VocabularyDatabaseManager {
             ...wordData,
             word: wordData.word.toLowerCase(),
             reviewCount: 0,
-            difficulty: 'good',
+            difficulty: 'none', // 초기 난이도 (학습 전)
             lastReviewed: null,
             addedDate: new Date().toISOString(),
             bookId: wordData.bookId || this.settings.currentBookId

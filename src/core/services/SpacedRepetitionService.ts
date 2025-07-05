@@ -231,6 +231,7 @@ export class SpacedRepetitionService {
      * Manually set card difficulty (for bulk operations)
      */
     setCardDifficulty(card: VocabularyCard, difficulty: ReviewResponse): VocabularyCard {
+        // Use the main algorithm instance for actual scheduling operations
         const reviewResult = this.algorithm.schedule(difficulty, card.scheduleInfo);
         
         return {
@@ -317,9 +318,12 @@ export class SpacedRepetitionService {
         good: { interval: number; displayText: string; eFactor: number; repetition: number };
         easy: { interval: number; displayText: string; eFactor: number; repetition: number };
     } {
-        const hardResult = this.algorithm.schedule(ReviewResponse.Hard, card.scheduleInfo);
-        const goodResult = this.algorithm.schedule(ReviewResponse.Good, card.scheduleInfo);
-        const easyResult = this.algorithm.schedule(ReviewResponse.Easy, card.scheduleInfo);
+        // Create a fresh algorithm instance for preview calculations to avoid state pollution
+        const previewAlgorithm = new SpacedRepetitionAlgorithm(this.settings);
+        
+        const hardResult = previewAlgorithm.schedule(ReviewResponse.Hard, card.scheduleInfo);
+        const goodResult = previewAlgorithm.schedule(ReviewResponse.Good, card.scheduleInfo);
+        const easyResult = previewAlgorithm.schedule(ReviewResponse.Easy, card.scheduleInfo);
 
         return {
             hard: {

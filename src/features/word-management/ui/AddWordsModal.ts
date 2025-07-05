@@ -166,7 +166,7 @@ export class AddWordsModal extends Modal {
                         const vocabularyCard = {
                             ...wordData,
                             reviewCount: 0,
-                            difficulty: 'good' as const,
+                            difficulty: 'none' as const, // 초기 난이도 (학습 전)
                             lastReviewed: null,
                             addedDate: new Date().toISOString(),
                             bookId: bookId

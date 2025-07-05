@@ -7,6 +7,8 @@ import { VocabularyDatabaseManager } from './infrastructure/storage/VocabularyDa
 import { AddWordsModal } from './features/word-management/ui/AddWordsModal';
 import { AddBookModal } from './features/book-management/ui/AddBookModal';
 import { LLMService } from './infrastructure/llm/LLMService';
+import { TTSServiceFactory } from './infrastructure/tts/TTSService';
+import { TTSService } from './infrastructure/tts/TTSInterface';
 import { encryptApiKey, decryptApiKey } from './utils';
 
 // DI Container
@@ -20,6 +22,7 @@ export default class EnglishVocabularyPlugin extends Plugin {
     settings: VocabularySettings;
     databaseManager: VocabularyDatabaseManager;
     llmService: LLMService;
+    ttsService: TTSService;
     private container: DIContainer;
 
     async onload() {
@@ -47,6 +50,9 @@ export default class EnglishVocabularyPlugin extends Plugin {
         
         // LLM 서비스 초기화
         this.llmService = new LLMService(this.settings);
+        
+        // TTS 서비스 초기화
+        this.ttsService = TTSServiceFactory.createTTSService(this.app, this.settings);
         
         // MD 파일 기반 데이터 로드
         try {
@@ -175,6 +181,11 @@ export default class EnglishVocabularyPlugin extends Plugin {
         // LLM 서비스 업데이트
         if (this.llmService) {
             this.llmService = new LLMService(this.settings);
+        }
+        
+        // TTS 서비스 업데이트
+        if (this.ttsService) {
+            this.ttsService = TTSServiceFactory.createTTSService(this.app, this.settings);
         }
         
         // DI Container에 설정 업데이트

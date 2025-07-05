@@ -1,5 +1,5 @@
 // 공통 기본 타입 정의
-export type Difficulty = 'easy' | 'good' | 'hard';
+export type Difficulty = 'none' | 'easy' | 'good' | 'hard';
 
 export type LLMProvider = 'openai' | 'anthropic' | 'google';
 
@@ -30,6 +30,7 @@ export interface Statistics {
     streakDays: number;
     averageDifficulty: number;
     wordsByDifficulty: {
+        none: number;
         easy: number;
         good: number;
         hard: number;

@@ -44,7 +44,7 @@ export const DEFAULT_SRS_SETTINGS: SRSSettings = {
     
     // Initial Review Intervals (첫 번째 성공적인 복습 후 간격)
     hardInterval: 1,            // Hard: 1일 후
-    goodInterval: 2,            // Good: 2일 후  
+    goodInterval: 2,            // Good: 2일 후
     easyInterval: 3,            // Easy: 3일 후
     
     // Load Balancing Settings
@@ -120,35 +120,35 @@ export class SpacedRepetitionAlgorithm {
         // E-Factor 최소값 제한 (1.3)
         newEFactor = Math.max(this.settings.minimumEFactor, newEFactor);
         
-        // SM-2 Algorithm Step 2: Repetition 업데이트
-        if (q >= 2) { // good 또는 easy (q = 2 또는 3)
-            newRepetition = currentSchedule.repetition + 1;
-        } else { // hard (q = 1)
-            newRepetition = 0; // repetition 리셋
-        }
-        
-        // SM-2 Algorithm Step 3: 다음 복습 간격 계산
+        // SM-2 Algorithm Step 3: 다음 복습 간격 계산 (repetition 업데이트 전에 수행)
         let newInterval: number;
         
         if (q < 2) { // hard (q = 1)
             // hard 응답 시 설정된 간격으로 복습
             newInterval = this.settings.hardInterval;
         } else {
-            // good 또는 easy 응답 시 초기 간격 설정
-            if (newRepetition === 1) {
-                // 첫 번째 성공적인 복습 후 간격
+            // good 또는 easy 응답 시 간격 설정
+            if (currentSchedule.repetition === 0) {
+                // 처음 학습하는 단어 (repetition = 0)의 경우 항상 초기 간격 사용
                 if (q === 2) { // good
-                    newInterval = this.settings.goodInterval;
+                    newInterval = this.settings.goodInterval; // 2일
                 } else { // easy (q === 3)
-                    newInterval = this.settings.easyInterval;
+                    newInterval = this.settings.easyInterval; // 3일
                 }
-            } else if (newRepetition === 2) {
+            } else if (currentSchedule.repetition === 1) {
                 // 두 번째 성공적인 복습 후 간격 (기존 SM-2 유지)
                 newInterval = 6;
             } else {
-                // n >= 3: I_n = I_(n-1) * EF_new
+                // n >= 2: I_n = I_(n-1) * EF_new
                 newInterval = Math.round(currentSchedule.interval * newEFactor);
             }
+        }
+        
+        // SM-2 Algorithm Step 2: Repetition 업데이트 (간격 계산 후에 수행)
+        if (q >= 2) { // good 또는 easy (q = 2 또는 3)
+            newRepetition = currentSchedule.repetition + 1;
+        } else { // hard (q = 1)
+            newRepetition = 0; // repetition 리셋
         }
         
         // 최대 간격 제한
